@@ -1,0 +1,31 @@
+# NOTE 1 : Flipped/Rotated tile IDs present here 
+    - Tiled uses these for tile transformations.
+    - These are the actual tile IDs after removing the flip flags:
+        3221226003 = 57 (flipped)
+        3221226066 = 58 (flipped), 3221226065 = 59 (flipped)
+        3221226035 = 89 (flipped), 3221226034 = 90 (flipped)
+        2684355153 = 88 (flipped), 2684355154 = 87 (flipped)
+        1610612774 = 120 (rotated), 1610612805 = 151 (rotated) etc. 
+    - but we already have the base IDs in the list of Wall Tiles so we can use those directly.
+
+# NOTE 2 : Code for Debugging the Collisions
+    - We can use the following code for visualizing the collision tiles:
+    
+    this.wallsLayer.renderDebug(this.add.graphics(), {
+        tileColor: null,                                                 // Non-Colliding Tiles
+        collidingTileColor: new Phaser.Display.Color(243, 134, 48, 200), // Colliding Tiles
+        faceColor: new Phaser.Display.Color(0, 255, 0, 100)              // Colliding Face Edges
+    });
+
+# NOTE 3 : Code for Manually Handling Collision Tile 
+    // From tiledmap JSON file
+    const wallTileIds = [
+        35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45,
+        56, 57, 58, 59, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76,
+        87, 88, 89, 90, 120, 121, 151, 152, 182, 183, 213, 214, 244, 245,
+        252, 253, 469, 470, 492, 493, 523, 524, 554, 555,
+        562, 563, 564, 565, 566, 567, 568, 569,
+        583, 584, 585, 586, 593, 594, 595, 596, 597, 598, 599, 600,
+        614, 615, 616, 617, 318, 362, 471, 473 
+    ]; 
+    this.wallsLayer.setCollision(wallTileIds);
