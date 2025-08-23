@@ -6,7 +6,7 @@ var $parent = document.createElement("div")
 $gif.crossOrigin = "anonymous"
 
 // $gif.src = "https://drive.google.com/uc?id=1rnsz6ag4Y9HVAykUgaz_C9_bahOkjknr"
-$gif.src = "pacman-gif.gif"
+$gif.src = "favicon.ico"
 
 $favicon.rel = "icon"
 
