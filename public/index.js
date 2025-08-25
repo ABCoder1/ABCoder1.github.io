@@ -453,22 +453,26 @@ class PacManScene extends Phaser.Scene {
         console.log(`Current scale: ${this.currentScale.toFixed(2)}`);
 
         this.sectionIcons.forEach((section, index) => {
-            const distance = Phaser.Math.Distance.Between(
-                pacmanTileX, pacmanTileY,
-                section.tileX, section.tileY
+            const innerBounds = section.innerBounds;
+        
+            // Check if Pacman is in the inner bounds of this section
+            const pacmanInInnerBounds = (
+                pacmanTileX >= innerBounds.minX && pacmanTileX <= innerBounds.maxX &&
+                pacmanTileY >= innerBounds.minY && pacmanTileY <= innerBounds.maxY
             );
 
-            console.log(`Distance to ${section.name}: ${distance.toFixed(2)}`);
-            
-            const proximityRadius = 3; // tiles
-            
-            if (distance <= proximityRadius && !section.isRevealed) {
-                console.log(`Revealing ${section.name}`);
-                // Fade out icon and reveal content
+            // Check if camera is centered on this section and isn't in transition
+            const cameraIsCenteredOnThisSection = (
+                this.currentSection === section && 
+                !this.isInTransition
+            );
+
+            // Reveal section content when Pacman is in inner bounds && camera is centered
+            if (pacmanInInnerBounds && cameraIsCenteredOnThisSection && !section.isRevealed) {
                 this.revealSection(section);
-            } else if (distance > proximityRadius && section.isRevealed) {
-                console.log(`Hiding ${section.name}`);
-                // Fade in icon and hide content
+            } 
+            // Hide section content when either condition is not met
+            else if (section.isRevealed && (!pacmanInInnerBounds || !cameraIsCenteredOnThisSection)) {
                 this.hideSection(section, index);
             }
         });
