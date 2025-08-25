@@ -13,3 +13,10 @@ html, body {
 canvas {
     display: block; /* Remove any inline spacing */
 }
+
+@font-face {
+    font-family: 'Pixelify Sans';
+    src: url('assets/fonts/PixelifySans-Bold.ttf') format('truetype');
+    font-weight: bold;
+    font-style: normal;
+}

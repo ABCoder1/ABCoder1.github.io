@@ -579,27 +579,100 @@ class PacManScene extends Phaser.Scene {
             section.contentText.destroy();
         }
 
-        // Create temporary content display
-        section.contentText = this.add.text(0, 0, section.name, {
-            fontSize: '18px',
-            fill: '#ffffff',
-            fontFamily: 'Arial',
+        // Create Animated Section Heading
+        this.createSectionHeading(section);
+    }
+
+    createSectionHeading(section) {
+        // Create background glow/border effect
+        const glowContainer = this.add.container(0, 0);
+        
+        // Create multiple text layers for the 3D effect
+        const shadowOffset = 4;
+
+        // Bottom shadow layer (darkest)
+        const shadowText = this.add.text(shadowOffset, shadowOffset, section.name.toUpperCase(), {
+            fontFamily: this.fontLoaded ? 'Pixelify Sans' : 'Arial',
+            fontSize: '32px',
+            fill: '#000000',
             stroke: '#000000',
             strokeThickness: 2
         }).setOrigin(0.5);
+        
+        // Glow layers for neon effect
+        const glow1 = this.add.text(0, 0, section.name.toUpperCase(), {
+            fontFamily: this.fontLoaded ? 'Pixelify Sans' : 'Arial',
+            fontSize: '32px',
+            fill: '#00FFFF',
+            stroke: '#00FFFF',
+            strokeThickness: 8
+        }).setOrigin(0.5).setAlpha(0.3);
+
+        const glow2 = this.add.text(0, 0, section.name.toUpperCase(), {
+            fontFamily: this.fontLoaded ? 'Pixelify Sans' : 'Arial',
+            fontSize: '32px',
+            fill: '#0080FF',
+            stroke: '#0080FF',
+            strokeThickness: 6
+        }).setOrigin(0.5).setAlpha(0.5);
+        
+        // Main text layer with gradient-like effect
+        const mainText = this.add.text(0, 0, section.name.toUpperCase(), {
+            fontFamily: this.fontLoaded ? 'Pixelify Sans' : 'Arial',
+            fontSize: '32px',
+            fill: '#FFE400',
+            stroke: '#FF8000',
+            strokeThickness: 3
+        }).setOrigin(0.5);
+
+        // Highlight layer for 3D effect
+        const highlightText = this.add.text(-1, -1, section.name.toUpperCase(), {
+            fontFamily: this.fontLoaded ? 'Pixelify Sans' : 'Arial',
+            fontSize: '32px',
+            fill: '#FFFFA0',
+            stroke: '#FFFFFF',
+            strokeThickness: 1
+        }).setOrigin(0.5).setAlpha(0.8);
+        
+        // Add all layers to container
+        glowContainer.add([shadowText, glow1, glow2, mainText, highlightText]);
+        
+        // Create main container
+        section.contentText = this.add.container(0, 0);
+        section.contentText.add([glowContainer]);
         
         // Simplified positioning
         const worldPos = this.tilesToWorldPosition(section.tileX, section.tileY);
         section.contentText.setPosition(worldPos.x, worldPos.y - 60);
         
         // Animate content in
-        section.contentText.setAlpha(0).setScale(0.5);
+        section.contentText.setAlpha(0).setScale(0.3);
         this.tweens.add({
             targets: section.contentText,
             alpha: 1,
             scale: 1,
-            duration: 300,
+            duration: 500,
             ease: 'Back.easeOut'
+        });
+
+        // Pulsing glow effect
+        this.tweens.add({
+            targets: [glow1, glow2],
+            alpha: { from: 0.1, to: 0.6 },
+            duration: 1500,
+            yoyo: true,
+            repeat: -1,
+            ease: 'Sine.easeInOut'
+        });
+        
+        // Subtle floating animation
+        this.tweens.add({
+            targets: section.contentText,
+            y: worldPos.y - 60 + 5,
+            duration: 2000,
+            yoyo: true,
+            repeat: -1,
+            ease: 'Sine.easeInOut'
         });
     }
 
@@ -736,6 +809,18 @@ class PacManScene extends Phaser.Scene {
         this.currentScale = 1;
         this.pacmanInitialized = false;
         this.animationsStarted = false; // Flag to prevent multiple animation starts
+        this.fontLoaded = false;
+
+        WebFont.load({
+            custom: {
+                families: ['Pixelify Sans'],
+                urls: ['index.css']
+            },
+            active: () => {
+                this.fontLoaded = true;
+                console.log('Font loaded successfully');
+            }
+        });
 
         // Creating TileMap
         this.map = this.make.tilemap({ key: 'pacman-map' });
