@@ -1,4 +1,178 @@
 class PacManScene extends Phaser.Scene {
+    createInstructionalArrows() {
+        // Create a container for all instructional elements
+        this.instructionContainer = this.add.container(0, 0);
+        
+        // Arrow properties
+        const arrowDistance = 80; // Distance from Pacman center
+        const arrowSize = 32;
+        const keySize = 24;
+        
+        // Create arrows and keys for each direction
+        const directions = [
+            { key: 'W', angle: 0, x: 0, y: -arrowDistance, direction: 'up' },
+            { key: 'S', angle: 180, x: 0, y: arrowDistance, direction: 'down' },
+            { key: 'A', angle: -90, x: -arrowDistance, y: 0, direction: 'left' },
+            { key: 'D', angle: 90, x: arrowDistance, y: 0, direction: 'right' }
+        ];
+        
+        this.instructionArrows = [];
+        
+        directions.forEach(dir => {
+            // Create arrow graphics
+            const arrow = this.add.graphics();
+            arrow.fillStyle(0xFFD700, 0.8); // Gold color with transparency
+            arrow.lineStyle(2, 0xFFFFFF, 1); // White outline
+            
+            // Draw arrow shape
+            arrow.beginPath();
+            arrow.moveTo(0, -15);     // Top point
+            arrow.lineTo(-10, 5);     // Bottom left
+            arrow.lineTo(-5, 5);      // Inner left
+            arrow.lineTo(-5, 15);     // Bottom left inner
+            arrow.lineTo(5, 15);      // Bottom right inner
+            arrow.lineTo(5, 5);       // Inner right
+            arrow.lineTo(10, 5);      // Bottom right
+            arrow.closePath();
+            arrow.fillPath();
+            arrow.strokePath();
+            
+            // Rotate arrow to correct direction
+            arrow.setRotation(Phaser.Math.DegToRad(dir.angle));
+            
+            // Create key background (rounded rectangle)
+            const keyBg = this.add.graphics();
+            keyBg.fillStyle(0x000000, 0.8); // Black background
+            keyBg.lineStyle(2, 0xFFFFFF, 1); // White border
+            keyBg.fillRoundedRect(-keySize/2, -keySize/2, keySize, keySize, 4);
+            keyBg.strokeRoundedRect(-keySize/2, -keySize/2, keySize, keySize, 4);
+            
+            // Create key text
+            const keyText = this.add.text(0, 0, dir.key, {
+                fontSize: '16px',
+                fill: '#ffffff',
+                fontFamily: 'Arial',
+                fontWeight: 'bold'
+            }).setOrigin(0.5);
+            
+            // Create container for this direction's elements
+            const directionContainer = this.add.container(dir.x, dir.y);
+            directionContainer.add([arrow, keyBg, keyText]);
+            
+            // Position key below/beside arrow based on direction
+            if (dir.direction === 'up') {
+                keyBg.setPosition(0, 35);
+                keyText.setPosition(0, 35);
+            } else if (dir.direction === 'down') {
+                keyBg.setPosition(0, -35);
+                keyText.setPosition(0, -35);
+            } else if (dir.direction === 'left') {
+                keyBg.setPosition(35, 0);
+                keyText.setPosition(35, 0);
+            } else if (dir.direction === 'right') {
+                keyBg.setPosition(-35, 0);
+                keyText.setPosition(-35, 0);
+            }
+            
+            // Store references
+            this.instructionArrows.push({
+                container: directionContainer,
+                arrow: arrow,
+                keyBg: keyBg,
+                keyText: keyText,
+                direction: dir.direction
+            });
+            
+            this.instructionContainer.add(directionContainer);
+        });
+        
+        // Initially hide the instruction container
+        this.instructionContainer.setAlpha(0);
+        this.instructionsVisible = false;
+        this.hasPlayerMoved = false;
+    }
+
+    showInstructions() {
+        if (!this.instructionsVisible && !this.hasPlayerMoved) {
+            this.instructionsVisible = true;
+            
+            // Position instruction container at Pacman's position
+            this.instructionContainer.setPosition(this.pacman.x, this.pacman.y);
+            
+            // Fade in instructions
+            this.tweens.add({
+                targets: this.instructionContainer,
+                alpha: 1,
+                duration: 500,
+                ease: 'Power2'
+            });
+            
+            // Add pulsing animation to arrows
+            this.instructionArrows.forEach(instruction => {
+                this.tweens.add({
+                    targets: instruction.arrow,
+                    scaleX: 1.2,
+                    scaleY: 1.2,
+                    duration: 1000,
+                    yoyo: true,
+                    repeat: -1,
+                    ease: 'Sine.easeInOut'
+                });
+                
+                // Add glow effect to key
+                this.tweens.add({
+                    targets: instruction.keyBg,
+                    alpha: 0.6,
+                    duration: 800,
+                    yoyo: true,
+                    repeat: -1,
+                    ease: 'Sine.easeInOut'
+                });
+            });
+        }
+    }
+
+    hideInstructions() {
+        if (this.instructionsVisible) {
+            this.instructionsVisible = false;
+            this.hasPlayerMoved = true;
+            
+            // Stop all instruction animations
+            this.instructionArrows.forEach(instruction => {
+                this.tweens.killTweensOf(instruction.arrow);
+                this.tweens.killTweensOf(instruction.keyBg);
+            });
+            
+            // Fade out instructions
+            this.tweens.add({
+                targets: this.instructionContainer,
+                alpha: 0,
+                duration: 300,
+                ease: 'Power2',
+                onComplete: () => {
+                    this.instructionContainer.setVisible(false);
+                }
+            });
+        }
+    }
+
+    updateInstructions() {
+        // Stop showing instructions if Pacman is moving
+        if (this.pacman && this.pacman.isMoving) {
+            this.hideInstructions();
+        }
+
+        // Show instructions when game starts
+        if (!this.instructionsVisible && !this.hasPlayerMoved && this.pacman && this.pacmanInitialized) {
+            this.showInstructions();
+        }
+        
+        // Update instruction position to follow Pacman (in case of camera movement)
+        if (this.instructionsVisible && this.pacman) {
+            this.instructionContainer.setPosition(this.pacman.x, this.pacman.y);
+        }
+    }
+
     setCollisionWithTransformedTiles() {
         // Extract all unique tile IDs from the walls layer data, including transformed ones
         const wallsData = this.wallsLayer.layer.data;
@@ -577,8 +751,11 @@ class PacManScene extends Phaser.Scene {
         // Store initial positioning flag
         this.pacmanInitialized = false;
 
-        // Create section icons after map's creation
+        // Create section icons and instructional arrows after map's creation
         this.createSectionIcons();
+        if (!this.pacman.isMoving) {
+            this.createInstructionalArrows();
+        }
 
         // Adding Collision between pacman and walls
         this.physics.add.collider(this.pacman, this.wallsLayer);
@@ -592,6 +769,7 @@ class PacManScene extends Phaser.Scene {
             this.pacman.update();
             this.updateSectionIconsProximity();
             this.updateCamera();
+            this.updateInstructions();
         }
     }
 
@@ -601,6 +779,14 @@ class PacManScene extends Phaser.Scene {
         if (this.activeCameraTween) {
             this.activeCameraTween.stop();
             this.activeCameraTween = null;
+        }
+
+        // Stop instruction animations
+        if (this.instructionArrows) {
+            this.instructionArrows.forEach(instruction => {
+                this.tweens.killTweensOf(instruction.arrow);
+                this.tweens.killTweensOf(instruction.keyBg);
+            });
         }
 
         // Clean up all section content
@@ -642,6 +828,7 @@ class PacManPlayer extends Phaser.GameObjects.Sprite {
         // Game Properties
         this.speed = 200; // Speed of Pacman
         this.direction = { x: 0, y: 0 }; // Initially stationary
+        this.isMoving = false;
 
         // Setup Inputs
         this.setupInputs();
@@ -677,6 +864,12 @@ class PacManPlayer extends Phaser.GameObjects.Sprite {
         
         // Apply Movement
         if (this.direction.x !== 0 || this.direction.y !== 0) {
+            // Hide instructions on first movement
+            if (!this.isMoving) {
+                this.isMoving = true;
+                this.scene.hideInstructions();
+            }
+
             const length = Math.sqrt(this.direction.x * this.direction.x + this.direction.y * this.direction.y);
             this.direction.x /= length;
             this.direction.y /= length;
