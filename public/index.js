@@ -24,17 +24,29 @@ class PacManScene extends Phaser.Scene {
 
         // Define section positions (in tile coordinates)
         const sections = [
-            { x: 9, y: 5, icon: 'work-experience', name: 'Work Experience',
-              bounds: { minX: 2, maxX: 17, minY: 2, maxY: 7 } // Top-left section
+            { 
+                // Top Left Section
+                x: 9, y: 5, icon: 'work-experience', name: 'Work Experience',
+                bounds: { minX: 2, maxX: 17, minY: 2, maxY: 7 },        // Outer bounds for detection
+                innerBounds: { minX: 2, maxX: 16, minY: 2, maxY: 6 }    // Inner bounds for camera centering
             },
-            { x: 30, y: 5, icon: 'projects', name: 'Projects',
-              bounds: { minX: 22, maxX: 38, minY: 2, maxY: 7 } // Top-right section
+            { 
+                // Top Right Section
+                x: 30, y: 5, icon: 'projects', name: 'Projects',
+                bounds: { minX: 22, maxX: 38, minY: 2, maxY: 7 },       // Outer bounds for detection
+                innerBounds: { minX: 23, maxX: 38, minY: 2, maxY: 6 }   // Inner bounds for camera centering
             },
-            { x: 9, y: 15, icon: 'skills', name: 'Skills',
-              bounds: { minX: 2, maxX: 17, minY: 12, maxY: 18 } // Bottom-left section
+            { 
+                // Bottom Left Section
+                x: 9, y: 15, icon: 'skills', name: 'Skills',
+                bounds: { minX: 2, maxX: 17, minY: 12, maxY: 18 },      // Outer bounds for detection
+                innerBounds: { minX: 2, maxX: 16, minY: 13, maxY: 18 }  // Inner bounds for camera centering
             },
-            { x: 30, y: 15, icon: 'about-me', name: 'About Me',
-              bounds: { minX: 22, maxX: 38, minY: 12, maxY: 18 } // Bottom-right section
+            { 
+                // Bottom Right Section
+                x: 30, y: 15, icon: 'about-me', name: 'About Me',
+                bounds: { minX: 22, maxX: 38, minY: 12, maxY: 18 },     // Outer bounds for detection
+                innerBounds: { minX: 23, maxX: 38, minY: 13, maxY: 18 } // Inner bounds for camera centering
             },
         ];
 
@@ -69,10 +81,11 @@ class PacManScene extends Phaser.Scene {
                 tileY: section.y,
                 name: section.name,
                 isRevealed: false,
-                contentText: null, // Placeholder for content text
-                originalY: 0,      // Will be set properly in resize()
-                index: index,       // Store index for animations
-                bounds: section.bounds // Store bounds for proximity detection
+                contentText: null,                  // Placeholder for content text
+                originalY: 0,                       // Will be set properly in resize()
+                index: index,                       // Store index for animations
+                bounds: section.bounds,             // Store bounds for proximity detection
+                innerBounds: section.innerBounds    // Store inner bounds for camera centering
             };
             
             this.sectionIcons.push(sectionData);
@@ -81,35 +94,19 @@ class PacManScene extends Phaser.Scene {
     }
 
     setupCamera() {
-        // // Store the map's world bounds for camera calculations
-        // this.mapWorldBounds = {
-        //     x: this.mapOffsetX,
-        //     y: this.mapOffsetY,
-        //     width: this.map.widthInPixels * this.currentScale,
-        //     height: this.map.heightInPixels * this.currentScale
-        // };
-
-        // // Set camera bounds to the map size
-        // this.cameras.main.setBounds(
-        //     this.mapWorldBounds.x,
-        //     this.mapWorldBounds.y,
-        //     this.mapWorldBounds.width,
-        //     this.mapWorldBounds.height
-        // );
-
-        // Start camera following Pacman
-        this.cameras.main.startFollow(this.pacman);
+        // Don't follow Pacman by default
+        this.cameras.main.stopFollow();
 
         // Set initial camera properties
-        // this.cameras.main.setLerp(0.1, 0.1); // Smooth camera movement
-        this.cameras.main.setLerp(0.08, 0.08); // Smoother camera movement
-        
-        // this.currentCameraZoom = 1;
-        // this.targetCameraZoom = 1;
+        this.cameras.main.setLerp(0.08, 0.08); // For smoother camera movement
         this.currentCameraZoom = this.calculateFullMapZoom();
         this.targetCameraZoom = this.currentCameraZoom;
-
         this.currentSection = null;
+
+        // Initialize camera animation tracking
+        this.activeCameraTween = null;
+        this.isAnimating = false;
+        this.isInTransition = false; // Track if camera is in transition mode
 
         // Set initial zoom
         this.cameras.main.setZoom(this.currentCameraZoom);
@@ -120,7 +117,6 @@ class PacManScene extends Phaser.Scene {
         // Initially center camera on map center since Pacman starts in center
         const mapCenterX = this.mapOffsetX + (this.map.widthInPixels * this.currentScale) / 2;
         const mapCenterY = this.mapOffsetY + (this.map.heightInPixels * this.currentScale) / 2;
-        this.cameras.main.stopFollow();
         this.cameras.main.centerOn(mapCenterX, mapCenterY);
     }
 
@@ -131,17 +127,19 @@ class PacManScene extends Phaser.Scene {
         const mapPixelWidth = this.map.widthInPixels * this.currentScale;
         const mapPixelHeight = this.map.heightInPixels * this.currentScale;
         
-        // Add some padding
-        // const padding = 50;
-        
-        // Reduce padding for better screen coverage
-        const padding = 20;
+        // No padding for maximum coverage
+        const padding = 0;
         const scaleX = (viewportWidth - padding) / mapPixelWidth;
         const scaleY = (viewportHeight - padding) / mapPixelHeight;
-        
-        // Use the smaller scale to ensure entire map fits
-        // return Math.min(scaleX, scaleY);
-        return Math.max(0.5, Math.min(scaleX, scaleY));
+
+        // Use the smaller scale to ensure entire map fits, with a reasonable minimum
+        return Math.max(0.3, Math.min(scaleX, scaleY));
+    }
+
+    calculateSectionZoom() {
+        // Calculate zoom for section view - should be larger than full map zoom
+        const fullMapZoom = this.calculateFullMapZoom();
+        return Math.min(2.5, fullMapZoom * 4); // 4x zoom from full map, capped at 2.5x
     }
 
     updateCamera() {
@@ -150,42 +148,78 @@ class PacManScene extends Phaser.Scene {
 
         // Check which section Pacman is in
         let pacmanInSection = null;
+        let pacmanInInnerSection = null;
         
         this.sectionIcons.forEach(section => {
             const bounds = section.bounds;
+            const innerBounds = section.innerBounds;
+            
+            // Check outer bounds (for section detection)
             if (pacmanTileX >= bounds.minX && pacmanTileX <= bounds.maxX &&
                 pacmanTileY >= bounds.minY && pacmanTileY <= bounds.maxY) {
                 pacmanInSection = section;
             }
+
+            // Check inner bounds (for camera centering)
+            if (pacmanTileX >= innerBounds.minX && pacmanTileX <= innerBounds.maxX &&
+                pacmanTileY >= innerBounds.minY && pacmanTileY <= innerBounds.maxY) {
+                pacmanInInnerSection = section;
+            }
         });
 
-        // Determine target zoom based on Pacman's position
-        const fullMapZoom = this.calculateFullMapZoom();
+        if (pacmanInSection) { 
+            // Pacman is in a section's outer bounds
+            if (pacmanInSection !== this.currentSection) {
+                // Stop any existing camera animation
+                this.stopActiveCameraAnimation();
+                
+                this.isInTransition = true;
+                this.targetCameraZoom = this.calculateSectionZoom();
+                this.currentSection = pacmanInSection;
 
-        if (pacmanInSection) {
-            // In a section - zoom in
-            // this.targetCameraZoom = 2.5;
-            this.targetCameraZoom = Math.min(2.0, fullMapZoom * 3); // Limit max zoom
-            this.currentSection = pacmanInSection;
+                // Start following Pacman during transition
+                this.cameras.main.startFollow(this.pacman, false, 0.1, 0.1);
+            }
+
+            // Check if Pacman is in the inner bounds of the current section
+            if (pacmanInInnerSection === this.currentSection && this.isInTransition) {
+                // Pacman reached the center area - stop following and center on section
+                this.isInTransition = false;
+                this.cameras.main.stopFollow();
+
+                const sectionCenterX = this.mapOffsetX + (this.currentSection.tileX * 32 * this.currentScale);
+                const sectionCenterY = this.mapOffsetY + (this.currentSection.tileY * 32 * this.currentScale);
+                this.animateCameraTo(sectionCenterX, sectionCenterY);
+            } else if (pacmanInInnerSection !== this.currentSection && !this.isInTransition && this.currentSection === pacmanInSection) {
+                // Pacman left the inner bounds but is still in the same section - start following again
+                this.stopActiveCameraAnimation();
+                this.isInTransition = true;
+                
+                // Start following Pacman again
+                this.cameras.main.startFollow(this.pacman, false, 0.1, 0.1);
+            }
         } else {
-            // Check if Pacman is in the center area (show full map)
-            const centerBounds = { minX: 19, maxX: 20, minY: 8, maxY: 11 };
-            if (pacmanTileX >= centerBounds.minX && pacmanTileX <= centerBounds.maxX &&
-                pacmanTileY >= centerBounds.minY && pacmanTileY <= centerBounds.maxY) {
-                // In center - show full map
+            // Pacman is not in any section and left the last section it entered
+            if (this.currentSection !== null) {
+                // Stop any existing camera animation
+                this.stopActiveCameraAnimation();
+
+                // Leaving a section - show full map
                 this.targetCameraZoom = this.calculateFullMapZoom();
                 this.currentSection = null;
-            } else {
-                // In corridor/transition area - medium zoom
-                // this.targetCameraZoom = 1.5;
-                this.targetCameraZoom = Math.min(1.5, fullMapZoom * 2);
-                this.currentSection = null;
+                this.isInTransition = false;
+
+                // Center on full map
+                const mapCenterX = this.mapOffsetX + (this.map.widthInPixels * this.currentScale) / 2;
+                const mapCenterY = this.mapOffsetY + (this.map.heightInPixels * this.currentScale) / 2;
+
+                this.cameras.main.stopFollow();
+                this.animateCameraTo(mapCenterX, mapCenterY);
             }
         }
 
         // Smoothly interpolate camera zoom
-        // const zoomLerpFactor = 0.05;
-        const zoomLerpFactor = 0.02; // Slower, smoother zoom transitions
+        const zoomLerpFactor = 0.03; // For slower & smoother zoom transitions
         const zoomDifference = Math.abs(this.currentCameraZoom - this.targetCameraZoom);
         
         // Use adaptive lerp factor - faster when difference is large, slower when close
@@ -194,74 +228,39 @@ class PacManScene extends Phaser.Scene {
         this.currentCameraZoom = Phaser.Math.Linear(
             this.currentCameraZoom,
             this.targetCameraZoom,
-            // zoomLerpFactor
             adaptiveLerpFactor
         );
 
         // Apply the zoom
         this.cameras.main.setZoom(this.currentCameraZoom);
-
-        // // Adjust camera follow offset based on section
-        // if (this.currentSection) {
-        //     // Focus camera on the section center when zoomed in
-        //     const sectionCenterX = this.mapOffsetX + (this.currentSection.tileX * 32 * this.currentScale);
-        //     const sectionCenterY = this.mapOffsetY + (this.currentSection.tileY * 32 * this.currentScale);
-            
-        //     this.cameras.main.setFollowOffset(
-        //         sectionCenterX - this.pacman.x,
-        //         sectionCenterY - this.pacman.y
-        //     );
-        // } else {
-        //     // Reset follow offset when not in a section
-        //     this.cameras.main.setFollowOffset(0, 0);
-        // }
-
-        // Adjust camera follow behavior based on zoom level
-        const isFullMapView = Math.abs(this.targetCameraZoom - fullMapZoom) < 0.01;
-
-        // Adjust camera follow behavior based on zoom level
-        // if (this.targetCameraZoom === this.calculateFullMapZoom()) {
-        if (isFullMapView) {
-            // When showing full map, center camera on map center
-            const mapCenterX = this.mapOffsetX + (this.map.widthInPixels * this.currentScale) / 2;
-            const mapCenterY = this.mapOffsetY + (this.map.heightInPixels * this.currentScale) / 2;
-            
-            // Stop following Pacman and center on map
-            this.cameras.main.stopFollow();
-            // this.cameras.main.centerOn(mapCenterX, mapCenterY);
-            this.cameras.main.pan(mapCenterX, mapCenterY, 1000, 'Power2'); // Smooth pan to center
-        } else if (this.currentSection) {
-            // In a section - follow Pacman but bias toward section center
-            if (!this.cameras.main.followTarget) {
-                // this.cameras.main.startFollow(this.pacman);
-                this.cameras.main.startFollow(this.pacman, false, 0.08, 0.08);
-            }
-            
-            const sectionCenterX = this.mapOffsetX + (this.currentSection.tileX * 32 * this.currentScale);
-            const sectionCenterY = this.mapOffsetY + (this.currentSection.tileY * 32 * this.currentScale);
-            
-            // this.cameras.main.setFollowOffset(
-            //     (sectionCenterX - this.pacman.x) * 0.3, // Reduce offset for smoother transition
-            //     (sectionCenterY - this.pacman.y) * 0.3
-            // );
-
-            // Smoother offset calculation
-            const offsetFactor = 0.2;
-            this.cameras.main.setFollowOffset(
-                (sectionCenterX - this.pacman.x) * offsetFactor,
-                (sectionCenterY - this.pacman.y) * offsetFactor
-            );
-        } else {
-            // In corridors - normal follow
-            if (!this.cameras.main.followTarget) {
-                // this.cameras.main.startFollow(this.pacman);
-                this.cameras.main.startFollow(this.pacman, false, 0.08, 0.08);
-            }
-            this.cameras.main.setFollowOffset(0, 0);
-        }
     }
 
-    
+    // Separate camera animation methods
+    animateCameraTo(x, y) {
+        this.isAnimating = true;
+        
+        // Create a tween that we can properly control
+        this.activeCameraTween = this.tweens.add({
+            targets: this.cameras.main,
+            scrollX: x - this.cameras.main.width / 2,
+            scrollY: y - this.cameras.main.height / 2,
+            duration: 800,
+            ease: 'Power2',
+            onComplete: () => {
+                this.activeCameraTween = null;
+                this.isAnimating = false;
+            }
+        });
+    }
+
+    stopActiveCameraAnimation() {
+        if (this.activeCameraTween) {
+            this.activeCameraTween.stop();
+            this.activeCameraTween.destroy();
+            this.activeCameraTween = null;
+        }
+        this.isAnimating = false;
+    }
 
     updateSectionIconsProximity() {
         // Initialize variables if they don't exist
@@ -290,8 +289,8 @@ class PacManScene extends Phaser.Scene {
             const proximityRadius = 3; // tiles
             
             if (distance <= proximityRadius && !section.isRevealed) {
-                // Fade out icon and reveal content
                 console.log(`Revealing ${section.name}`);
+                // Fade out icon and reveal content
                 this.revealSection(section);
             } else if (distance > proximityRadius && section.isRevealed) {
                 console.log(`Hiding ${section.name}`);
@@ -318,8 +317,8 @@ class PacManScene extends Phaser.Scene {
             ease: 'Power2'
         });
         
-        // Here you can add content reveal logic
-        // For example, show text or other elements
+        // TODO: Add content reveal logic
+        // Show text or other elements
         this.showSectionContent(section);
     }
 
@@ -344,15 +343,6 @@ class PacManScene extends Phaser.Scene {
                 yoyo: true,
                 repeat: -1,
                 ease: 'Sine.easeInOut'
-            });
-            
-            // Create Rotation animation
-            this.tweens.add({
-                targets: section.icon,
-                rotation: '+=0.0',
-                duration: 3000,
-                repeat: -1,
-                ease: 'Linear'
             });
         });
     }
@@ -401,15 +391,6 @@ class PacManScene extends Phaser.Scene {
                     repeat: -1,
                     ease: 'Sine.easeInOut'
                 });
-
-                // Restart rotation animation
-                this.tweens.add({
-                    targets: section.icon,
-                    rotation: '+=0.0',
-                    duration: 3000,
-                    repeat: -1,
-                    ease: 'Linear'
-                });
             }
         });
     }
@@ -428,12 +409,6 @@ class PacManScene extends Phaser.Scene {
             stroke: '#000000',
             strokeThickness: 2
         }).setOrigin(0.5);
-        
-        // Position the text
-        // const worldPos = this.tilesToWorldPosition(section.tileX, section.tileY);
-        
-        // const contentY =  worldPos.y -  (4 * 32 * this.currentScale - this.mapOffsetY);
-        // section.contentText.setPosition(worldPos.x, contentY);
         
         // Simplified positioning
         const worldPos = this.tilesToWorldPosition(section.tileX, section.tileY);
@@ -489,12 +464,11 @@ class PacManScene extends Phaser.Scene {
         const scaleX = width / mapWidth;
         const scaleY = height / mapHeight;
         const scale = Math.min(scaleX, scaleY);
+        this.backgroundLayer.setScale(scale);
+        this.wallsLayer.setScale(scale);
 
         // Storing scale value for other methods
         this.currentScale = scale;
-
-        this.backgroundLayer.setScale(scale);
-        this.wallsLayer.setScale(scale);
 
         // Centering Map on screen
         const scaledWidth = mapWidth * scale;
@@ -548,24 +522,11 @@ class PacManScene extends Phaser.Scene {
             this.pacmanInitialized = true;
         }
 
-        // // Update Physics World Bounds
-        // if (this.physics && this.physics.world) {
-        //     this.physics.world.setBounds(
-        //         this.mapOffsetX,
-        //         this.mapOffsetY,
-        //         scaledWidth,
-        //         scaledHeight
-        //     );
-        //     this.pacman.body.setCollideWorldBounds(true);
-        // }
-
         // Update Physics World Bounds - Make them larger to allow camera movement
         if (this.physics && this.physics.world) {
             // Set physics bounds to be larger than the map to allow smooth camera movement
-            // const boundsWidth = Math.max(scaledWidth, width * 2);
-            const boundsWidth = Math.max(scaledWidth, width * 3);
-            // const boundsHeight = Math.max(scaledHeight, height * 2);
-            const boundsHeight = Math.max(scaledHeight, height * 3);
+            const boundsWidth = Math.max(scaledWidth, width * 2);
+            const boundsHeight = Math.max(scaledHeight, height * 2);
             const boundsX = this.mapOffsetX - (boundsWidth - scaledWidth) / 2;
             const boundsY = this.mapOffsetY - (boundsHeight - scaledHeight) / 2;
             
@@ -636,6 +597,12 @@ class PacManScene extends Phaser.Scene {
 
     // Add cleanup method for when scene is destroyed
     destroy() {
+        // Stop any active camera animation
+        if (this.activeCameraTween) {
+            this.activeCameraTween.stop();
+            this.activeCameraTween = null;
+        }
+
         // Clean up all section content
         if (this.sectionIcons) {
             this.sectionIcons.forEach(section => {
