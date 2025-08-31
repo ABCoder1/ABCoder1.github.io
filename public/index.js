@@ -200,27 +200,27 @@ class PacManScene extends Phaser.Scene {
         const sections = [
             { 
                 // Top Left Section
-                x: 9, y: 5, icon: 'work-experience', name: 'Work Experience',
+                x: 10, y: 5, icon: 'work-experience', name: 'Work Experience',
                 bounds: { minX: 2, maxX: 17, minY: 2, maxY: 7 },        // Outer bounds for detection
-                innerBounds: { minX: 2, maxX: 16, minY: 2, maxY: 6 }    // Inner bounds for camera centering
+                innerBounds: { minX: 3, maxX: 16.5, minY: 3, maxY: 6.5 }    // Inner bounds for camera centering
             },
             { 
                 // Top Right Section
                 x: 30, y: 5, icon: 'projects', name: 'Projects',
                 bounds: { minX: 22, maxX: 38, minY: 2, maxY: 7 },       // Outer bounds for detection
-                innerBounds: { minX: 23, maxX: 38, minY: 2, maxY: 6 }   // Inner bounds for camera centering
+                innerBounds: { minX: 23, maxX: 36.5, minY: 3, maxY: 6.5 }   // Inner bounds for camera centering
             },
             { 
                 // Bottom Left Section
-                x: 9, y: 15, icon: 'skills', name: 'Skills',
+                x: 10, y: 15, icon: 'skills', name: 'Skills',
                 bounds: { minX: 2, maxX: 17, minY: 12, maxY: 18 },      // Outer bounds for detection
-                innerBounds: { minX: 2, maxX: 16, minY: 13, maxY: 18 }  // Inner bounds for camera centering
+                innerBounds: { minX: 3, maxX: 16.5, minY: 13, maxY: 16.5 }  // Inner bounds for camera centering
             },
             { 
                 // Bottom Right Section
                 x: 30, y: 15, icon: 'about-me', name: 'About Me',
                 bounds: { minX: 22, maxX: 38, minY: 12, maxY: 18 },     // Outer bounds for detection
-                innerBounds: { minX: 23, maxX: 38, minY: 13, maxY: 18 } // Inner bounds for camera centering
+                innerBounds: { minX: 23, maxX: 36.5, minY: 13, maxY: 16.5 } // Inner bounds for camera centering
             },
         ];
 
@@ -255,7 +255,7 @@ class PacManScene extends Phaser.Scene {
                 tileY: section.y,
                 name: section.name,
                 isRevealed: false,
-                contentText: null,                  // Placeholder for content text
+                contentContainer: null,             // Container for section heading & content
                 originalY: 0,                       // Will be set properly in resize()
                 index: index,                       // Store index for animations
                 bounds: section.bounds,             // Store bounds for proximity detection
@@ -264,6 +264,464 @@ class PacManScene extends Phaser.Scene {
             
             this.sectionIcons.push(sectionData);
             this.sectionIconsContainer.add(blurContainer);
+        });
+    }
+
+    createSectionData() {
+        // Define custom data for each section
+        this.sectionData = {
+            'Work Experience': [
+                {
+                    logo: 'smartbridge-logo',
+                    title: 'Machine Learning Intern',
+                    company: 'Smartbridge',
+                    period: 'June 2019 - July 2019',
+                    description: 'Developed a facial recognition module using OpenCV and scikit-learn.',
+                    technologies: ['OpenCV', 'scikit-learn', 'NumPy', 'Pandas', 'Matplotlib', 'PyTorch', 'TensorFlow'],
+                    achievements: [
+                        'Developed a facial recognition dataset using OpenCV & NumPy for data analytics and data modeling.',
+                        'Implemented anomaly detection algorithms using scikit-learn and PyTorch, testing & refining the model\'s problem solving aptitude to achieve optimal accuracy based on the confusion matrix thereby mitigating identity theft risks.',
+                    ]
+                },
+                {
+                    logo: 'serc-logo',
+                    title: 'Full Stack Developer',
+                    company: 'SERC, IIIT Hyderabad',
+                    period: 'June 2020 - July 2020',
+                    description: 'Worked on Virtual Labs platform development and maintenance.',
+                    technologies: ['JavaScript', 'TypeScript', 'React', 'Node.js', 'Express.js', 'Socket.io', 'MongoDB'],
+                    achievements: [
+                        'Resolved front-end bugs for Virtual Labs at IIIT Hyderabad, enhancing user experience and system stability.',
+                        'Developed efficient REST APIs with query-parameter optimization & lazy-loading and evaluated the scalability of various technologies in internal projects.',
+                    ]
+                },
+                {
+                    logo: 'forcepoint-logo',
+                    title: 'Software Engineer',
+                    company: 'Forcepoint',
+                    period: 'July 2022 - August 2024',
+                    description: 'Developed and maintained cybersecurity solutions using design patterns like CQRS & DDD. Worked on threat detection systems and user interface improvements.',
+                    technologies: ['JavaScript', 'TypeScript', 'React', 'Node.js', 'Python', 'AWS', 'Kubernetes', 'Kafka', 'Docker', 'Memcached', 'Redis', 'MongoDB', 'MariaDB', 'Amazon RDS'],
+                    achievements: [
+                        'Products : RBI (Remote Browser Isolation) & CASB (Cloud Access Security Broker)',
+                        'Migrated RBI codebase to cloud infrastructure and implemented AWS latency-based load balancing, enabling access to over a million daily end-users from any device globally, increasing user reach by 50% and reducing downtime by 20%.',
+                        'Incorporated Antivirus, OPSWAT, and deep-secure scanning support, ensuring security compliance by processing over 500,000 scans weekly and ensuring 100% safe downloads through CDR and remote rendering of popular file formats.',
+                        'Revamped CASB\'s monolithic architecture into an event-driven CQRS architecture using Golang, improving system responsiveness by 30%, eliminating testing framework bottlenecks and increasing scalability for future growth & load.'
+                    ]
+                },
+                {
+                    logo: 'ucr-logo',
+                    title: 'Research Assistant',
+                    company: 'UC Riverside',
+                    period: 'Jun 2025 - Present',
+                    description: 'Leading projects to understand transcription dysregulation in human diseases using machine learning and systems biology approaches.',
+                    technologies: ['Pytorch', 'TensorFlow', 'HuggingFace', 'WandB', 'LangChain'],
+                    achievements: [
+                        'Developed an ML framework to process high-throughput scRNA data, expediting viral-host interaction analysis by 40%.',
+                        'Built & Deployed digital tools for lineage tracing and trajectory inference using cutting-edge single-cell RNA-Seq data.',
+                        'Provided computational insights to wet-lab scientists, speeding up iterative model fine-tuning & feedback loops by 20%.'
+                    ]
+                }
+            ],
+            'Projects': [
+                {
+                    logo: 'forcepoint-logo',
+                    title: 'AI-Powered Portfolio',
+                    company: 'Personal Project',
+                    period: '2024',
+                    description: 'Interactive portfolio website built with Phaser.js featuring AI-driven animations and game mechanics.',
+                    technologies: ['Phaser.js', 'JavaScript', 'WebGL', 'CSS3'],
+                    achievements: [
+                        'Unique gaming interface',
+                        'Responsive design',
+                        'Interactive animations'
+                    ]
+                }
+            ],
+            'Skills': [
+                {
+                    logo: 'ucr-logo',
+                    title: 'Programming Languages',
+                    company: 'Technical Skills',
+                    period: 'Proficient',
+                    description: 'Expertise in multiple programming languages and frameworks for full-stack development.',
+                    technologies: ['JavaScript', 'Python', 'Java', 'C++', 'TypeScript'],
+                    achievements: [
+                        '5+ years experience',
+                        'Full-stack development',
+                        'Algorithm optimization'
+                    ]
+                }
+            ],
+            'About Me': [
+                {
+                    logo: 'forcepoint-logo',
+                    title: 'Passionate Developer',
+                    company: 'Personal Info',
+                    period: 'Always Learning',
+                    description: 'Dedicated software engineer with a passion for creating innovative solutions and learning new technologies.',
+                    technologies: ['Problem Solving', 'Team Leadership', 'Innovation'],
+                    achievements: [
+                        'Quick learner',
+                        'Team player',
+                        'Innovation focused'
+                    ]
+                }
+            ]
+        };
+    }
+
+    createSectionContent(section) {
+        if (!this.sectionData[section.name]) {
+            console.log('No section data found for:', section.name);
+            return;
+        }
+
+        const sectionItems = this.sectionData[section.name];
+        
+        // Create container for all orbs in this section
+        section.orbsContainer = this.add.container(0, 0);
+        section.orbs = [];
+
+        // Calculate section bounds in WORLD coordinates
+        const innerBounds = section.innerBounds;
+        const tileSize = 32 * this.currentScale;
+        
+        // Calculate the actual section dimensions in world coordinates
+        const sectionWorldWidth = (innerBounds.maxX - innerBounds.minX + 1) * tileSize;
+        const sectionWorldHeight = (innerBounds.maxY - innerBounds.minY + 1) * tileSize;
+
+        // Orb area settings - only use a portion of the section for orbs
+        const orbAreaWidth = sectionWorldWidth * 0.8;  // 80% of inner section width
+        const orbAreaHeight = sectionWorldHeight * 0.4; // 40% of inner section height
+        
+        // Calculate grid layout
+        const numOrbs = sectionItems.length;
+        const maxOrbsPerRow = Math.min(4, numOrbs);
+        const numRows = Math.ceil(numOrbs / maxOrbsPerRow);
+        
+        // Calculate cell dimensions
+        const cellWidth = orbAreaWidth / maxOrbsPerRow;
+        const cellHeight = orbAreaHeight / numRows;
+
+        // For debug purposes - shows the orb area and grid
+        const debug = false;
+        if (debug) {
+            const debugGraphics = this.add.graphics();
+            
+            // Inner bounds (green)
+            debugGraphics.lineStyle(2, 0x00ff00, 0.7);
+            debugGraphics.strokeRect(
+                - sectionWorldWidth/2,
+                - sectionWorldHeight/2 + 85,
+                sectionWorldWidth,
+                sectionWorldHeight
+            );
+            
+            // Orb area (blue) -- Hidden below yellow table
+            debugGraphics.lineStyle(2, 0x0000ff, 0.7);
+            debugGraphics.strokeRect(
+                -orbAreaWidth/2,
+                -orbAreaHeight/2 + 85, // Since, orb positioning is offseted at +85
+                orbAreaWidth,
+                orbAreaHeight
+            );
+
+            // Table grid cells (yellow) - RELATIVE positioning
+            debugGraphics.lineStyle(1, 0xffff00, 0.7);
+            for (let r = 0; r < numRows; r++) {
+                // Calculate orbs in this row
+                const orbsInThisRow = (r === numRows-1) 
+                    ? (numOrbs - (numRows-1) * maxOrbsPerRow) 
+                    : maxOrbsPerRow;
+                    
+                // Calculate row offset to center cells
+                const rowOffset = (maxOrbsPerRow - orbsInThisRow) * cellWidth / 2;
+                
+                for (let c = 0; c < orbsInThisRow; c++) {
+                    debugGraphics.strokeRect(
+                        -orbAreaWidth/2 + rowOffset + c * cellWidth,
+                        -orbAreaHeight/2 + 85 + r * cellHeight, // +85 to match orb offset
+                        cellWidth,
+                        cellHeight
+                    );
+                }
+            }
+            
+            // Section center (red dot)
+            debugGraphics.fillStyle(0xff0000, 1);
+            debugGraphics.fillCircle(0, 85, 5);
+            
+            section.orbsContainer.add(debugGraphics);
+        }
+
+        // Create orbs
+        sectionItems.forEach((item, index) => {
+            // Calculate grid position
+            const row = Math.floor(index / maxOrbsPerRow);
+            const col = index % maxOrbsPerRow;
+            
+            // Calculate how many orbs are in this row (last row might have fewer)
+            const orbsInThisRow = (row === numRows-1) 
+                ? (numOrbs - (numRows-1) * maxOrbsPerRow) 
+                : maxOrbsPerRow;
+                
+            // Center orbs in each row
+            const rowOffset = (maxOrbsPerRow - orbsInThisRow) * cellWidth / 2;
+
+            // Calculate RELATIVE position within the orb area 
+            const orbX = -orbAreaWidth/2 + rowOffset + (col + 0.5) * cellWidth;
+            const orbY = -orbAreaHeight/2 + (row + 0.5) * cellHeight + 85; // +85 to position below heading
+
+            // Create floating orb
+            const orb = this.add.image(0, 0, item.logo);
+            orb.setScale(0.07); // Small size
+            orb.setAlpha(0.9);
+            
+            // Create orb container at calculated position
+            const orbContainer = this.add.container(orbX, orbY);
+            orbContainer.add([orb]);
+            
+            // Store orb data
+            const orbData = {
+                container: orbContainer,
+                orb: orb,
+                glows: [],
+                data: item,
+                isInteracted: false,
+                originalX: orbX,
+                originalY: orbY
+            };
+            
+            section.orbs.push(orbData);
+            section.orbsContainer.add(orbContainer);
+            
+            // Add physics body for collision detection
+            this.physics.add.existing(orbContainer);
+            orbContainer.body.setSize(30, 30); // Small collision area
+            orbContainer.body.setImmovable(true);
+
+            // Collision with Pacman
+            this.physics.add.overlap(this.pacman, orbContainer, () => {
+                this.handleOrbInteraction(orbData);
+            });
+        });
+        
+        // Adding orbs to section content for proper cleanup
+        if (section.contentContainer) {
+            section.contentContainer.add(section.orbsContainer);
+        }
+
+        // Start orb animations
+        this.startOrbAnimations(section);
+    }
+
+    // Animation for orbs
+    startOrbAnimations(section) {
+        section.orbs.forEach(orbData => {
+            // Floating animation
+            this.tweens.add({
+                targets: orbData.container,
+                y: orbData.originalY + 2, // Subtle movement
+                duration: 1500,
+                yoyo: true,
+                repeat: -1,
+                ease: 'Sine.easeInOut'
+            });
+        });
+    }
+
+    // Interaction handler when Pacman touches an orb
+    handleOrbInteraction(orbData) {
+        if (orbData.isInteracted || this.overlayOpen) return;
+        
+        orbData.isInteracted = true;
+        this.showOverlay(orbData.data);
+        
+        // Visual feedback for interaction
+        this.tweens.add({
+            targets: orbData.container,
+            scale: 1.3,
+            duration: 200,
+            yoyo: true,
+            ease: 'Power2'
+        });
+    }
+
+    // Show overlay with details
+    showOverlay(data) {
+        this.overlayOpen = true;
+
+        // Get current camera properties
+        const camera = this.cameras.main;
+
+        // Create overlay background - covers the entire visible area
+        this.overlayBg = this.add.graphics();
+        this.overlayBg.fillStyle(0x000000, 0.7);
+        this.overlayBg.fillRect(0, 0, camera.width, camera.height);
+        this.overlayBg.setScrollFactor(0); // Fixed to camera
+        this.overlayBg.setDepth(1000); // Ensure it's on top
+
+        // Calculate overlay size relative to visible viewport - make it smaller to ensure everything fits
+        const overlayWidth = Math.min(camera.width * 0.6, 350); // Reduced to 60% and smaller max
+        const overlayHeight = Math.min(camera.height * 0.35, 250); // Reduced to 35% and smaller max
+
+        // Create overlay container at SCREEN CENTER
+        this.overlayContainer = this.add.container(camera.width / 2, camera.height / 2);
+        this.overlayContainer.setScrollFactor(0); // Fixed to camera
+        this.overlayContainer.setDepth(1001); // Ensure it's above background
+        
+        // Create window background with neon border
+        const overlayWindow = this.add.graphics();
+        overlayWindow.fillStyle(0x001122, 0.95);
+        overlayWindow.lineStyle(3, 0x00ffff, 1);
+        overlayWindow.fillRoundedRect(-overlayWidth/2, -overlayHeight/2, overlayWidth, overlayHeight, 15);
+        overlayWindow.strokeRoundedRect(-overlayWidth/2, -overlayHeight/2, overlayWidth, overlayHeight, 15);
+        
+        // Scale text sizes based on available space
+        const baseScale = Math.min(overlayWidth / 350, overlayHeight / 250);
+        const textScale = Math.max(1.0, Math.min(1.0, baseScale));
+        
+        // Calculate vertical spacing based on overlay height
+        const verticalSpacing = overlayHeight / 8; // Divide height into 8 sections
+        const contentPadding = 20; // Padding from edges
+        
+        // Add logo at top
+        const logo = this.add.image(0, -overlayHeight/2 + verticalSpacing, data.logo);
+        logo.setScale(0.06 * textScale);
+        
+        // Add title with responsive font size and position
+        const titleSize = Math.floor(16 * textScale);
+        const title = this.add.text(0, -overlayHeight/2 + verticalSpacing * 2, data.title, {
+            fontSize: `${titleSize}px`,
+            fill: '#FFE400',
+            fontFamily: this.fontLoaded ? 'Pixelify Sans Bold' : 'Arial',
+            fontWeight: 'bold'
+        }).setOrigin(0.5);
+        
+        // Add company and period with responsive font size
+        const subtitleSize = Math.floor(12 * textScale);
+        const company = this.add.text(0, -overlayHeight/2 + verticalSpacing * 2.5, `${data.company} | ${data.period}`, {
+            fontSize: `${subtitleSize}px`,
+            fill: '#00FFFF',
+            fontFamily: this.fontLoaded ? 'Pixelify Sans Regular' : 'Arial'
+        }).setOrigin(0.5);
+        
+        // Add description with responsive font size and width
+        const bodySize = Math.floor(10 * textScale);
+        const description = this.add.text(0, -overlayHeight/2 + verticalSpacing * 3, data.description, {
+            fontSize: `${bodySize}px`,
+            fill: '#FFFFFF',
+            fontFamily: this.fontLoaded ? 'Pixelify Sans Regular' : 'Arial',
+            wordWrap: { width: overlayWidth - contentPadding * 2 },
+            align: 'center'
+        }).setOrigin(0.5);
+        
+        // Add technologies with responsive sizing
+        const sectionTitleSize = Math.floor(12 * textScale);
+        const techTitle = this.add.text(0, -overlayHeight/2 + verticalSpacing * 4, 'Technologies:', {
+            fontSize: `${sectionTitleSize}px`,
+            fill: '#FFE400',
+            fontFamily: this.fontLoaded ? 'Pixelify Sans Bold' : 'Arial',
+            fontWeight: 'bold'
+        }).setOrigin(0.5);
+        
+        const techBodySize = Math.floor(10 * textScale);
+        const technologies = this.add.text(0, -overlayHeight/2 + verticalSpacing * 5, data.technologies.join(' • '), {
+            fontSize: `${techBodySize}px`,
+            fill: '#00FF00',
+            fontFamily: this.fontLoaded ? 'Pixelify Sans Regular' : 'Arial',
+            wordWrap: { width: overlayWidth - contentPadding * 2 },
+            align: 'center'
+        }).setOrigin(0.5);
+        
+        // Add achievements with responsive sizing
+        const achieveTitle = this.add.text(0, -overlayHeight/2 + verticalSpacing * 6, 'Key Achievements:', {
+            fontSize: `${sectionTitleSize}px`,
+            fill: '#FFE400',
+            fontFamily: this.fontLoaded ? 'Pixelify Sans Bold' : 'Arial',
+            fontWeight: 'bold'
+        }).setOrigin(0.5);
+        
+        const achievements = this.add.text(0, -overlayHeight/2 + verticalSpacing * 7, data.achievements.map(a => `• ${a}`).join('\n'), {
+            fontSize: `${techBodySize}px`,
+            fill: '#FFFFFF',
+            fontFamily: this.fontLoaded ? 'Pixelify Sans Regular' : 'Arial',
+            wordWrap: { width: overlayWidth - contentPadding * 2 },
+            align: 'left',
+            lineSpacing: 1
+        }).setOrigin(0.5, 0);
+        
+        // Add close instruction with responsive sizing
+        const instructionSize = Math.floor(10 * textScale);
+        const closeText = this.add.text(0, overlayHeight/2 - verticalSpacing * 0.8, 'Press ESC to close', {
+            fontSize: `${instructionSize}px`,
+            fill: '#888888',
+            fontFamily: this.fontLoaded ? 'Pixelify Sans Regular' : 'Arial',
+            fontStyle: 'italic'
+        }).setOrigin(0.5);
+        
+        // Add all elements to container
+        this.overlayContainer.add([
+            overlayWindow, logo, title, company, description, 
+            techTitle, technologies, achieveTitle, achievements, closeText
+        ]);
+        
+        // Animate overlay in
+        this.overlayContainer.setAlpha(0).setScale(0.8);
+        this.tweens.add({
+            targets: this.overlayContainer,
+            alpha: 1,
+            scale: 1,
+            duration: 300,
+            ease: 'Back.easeOut'
+        });
+        
+        // Setup ESC key listener
+        this.escKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ESC);
+        this.escKey.on('down', this.closeOverlay, this);
+    }
+
+    // Close overlay when ESC is pressed
+    closeOverlay() {
+        if (!this.overlayOpen) return;
+        
+        this.overlayOpen = false;
+        
+        // Animate overlay out
+        this.tweens.add({
+            targets: this.overlayContainer,
+            alpha: 0,
+            scale: 0.5,
+            duration: 200,
+            ease: 'Power2',
+            onComplete: () => {
+                if (this.overlayBg) {
+                    this.overlayBg.destroy();
+                    this.overlayBg = null;
+                }
+                if (this.overlayContainer) {
+                    this.overlayContainer.destroy();
+                    this.overlayContainer = null;
+                }
+            }
+        });
+        
+        // Remove ESC key listener
+        if (this.escKey) {
+            this.escKey.off('down', this.closeOverlay, this);
+            this.escKey = null;
+        }
+        
+        // Reset all orb interactions after a cooldown
+        this.time.delayedCall(1000, () => {
+            this.sectionIcons.forEach(section => {
+                if (section.orbs) {
+                    section.orbs.forEach(orbData => {
+                        orbData.isInteracted = false;
+                    });
+                }
+            });
         });
     }
 
@@ -473,7 +931,7 @@ class PacManScene extends Phaser.Scene {
             } 
             // Hide section content when either condition is not met
             else if (section.isRevealed && (!pacmanInInnerBounds || !cameraIsCenteredOnThisSection)) {
-                this.hideSection(section, index);
+                this.hideSection(section);
             }
         });
     }
@@ -525,8 +983,19 @@ class PacManScene extends Phaser.Scene {
         });
     }
 
-    hideSection(section, index) {
+    hideSection(section) {
         section.isRevealed = false;
+
+        // Reset orb interactions when hiding section
+        if (section.orbs) {
+            section.orbs.forEach(orbData => {
+                // Reset orb interaction state
+                orbData.isInteracted = false;
+                // Stop any active tweens on orbs
+                this.tweens.killTweensOf(orbData.container);
+                this.tweens.killTweensOf(orbData.orb);
+            });
+        }
         
         // Hide content first
         this.hideSectionContent(section);
@@ -575,12 +1044,15 @@ class PacManScene extends Phaser.Scene {
 
     showSectionContent(section) {
         // Clean up any existing content first
-        if (section.contentText && section.contentText.active) {
-            section.contentText.destroy();
+        if (section.contentContainer && section.contentContainer.active) {
+            section.contentContainer.destroy();
         }
 
         // Create Animated Section Heading
         this.createSectionHeading(section);
+
+        // Create contents inside each section
+        this.createSectionContent(section);
     }
 
     createSectionHeading(section) {
@@ -592,7 +1064,7 @@ class PacManScene extends Phaser.Scene {
 
         // Bottom shadow layer (darkest)
         const shadowText = this.add.text(shadowOffset, shadowOffset, section.name.toUpperCase(), {
-            fontFamily: this.fontLoaded ? 'Pixelify Sans' : 'Arial',
+            fontFamily: this.fontLoaded ? 'Pixelify Sans Bold' : 'Arial',
             fontSize: '32px',
             fill: '#000000',
             stroke: '#000000',
@@ -601,7 +1073,7 @@ class PacManScene extends Phaser.Scene {
         
         // Glow layers for neon effect
         const glow1 = this.add.text(0, 0, section.name.toUpperCase(), {
-            fontFamily: this.fontLoaded ? 'Pixelify Sans' : 'Arial',
+            fontFamily: this.fontLoaded ? 'Pixelify Sans Bold' : 'Arial',
             fontSize: '32px',
             fill: '#00FFFF',
             stroke: '#00FFFF',
@@ -609,7 +1081,7 @@ class PacManScene extends Phaser.Scene {
         }).setOrigin(0.5).setAlpha(0.3);
 
         const glow2 = this.add.text(0, 0, section.name.toUpperCase(), {
-            fontFamily: this.fontLoaded ? 'Pixelify Sans' : 'Arial',
+            fontFamily: this.fontLoaded ? 'Pixelify Sans Bold' : 'Arial',
             fontSize: '32px',
             fill: '#0080FF',
             stroke: '#0080FF',
@@ -618,7 +1090,7 @@ class PacManScene extends Phaser.Scene {
         
         // Main text layer with gradient-like effect
         const mainText = this.add.text(0, 0, section.name.toUpperCase(), {
-            fontFamily: this.fontLoaded ? 'Pixelify Sans' : 'Arial',
+            fontFamily: this.fontLoaded ? 'Pixelify Sans Bold' : 'Arial',
             fontSize: '32px',
             fill: '#FFE400',
             stroke: '#FF8000',
@@ -627,7 +1099,7 @@ class PacManScene extends Phaser.Scene {
 
         // Highlight layer for 3D effect
         const highlightText = this.add.text(-1, -1, section.name.toUpperCase(), {
-            fontFamily: this.fontLoaded ? 'Pixelify Sans' : 'Arial',
+            fontFamily: this.fontLoaded ? 'Pixelify Sans Bold' : 'Arial',
             fontSize: '32px',
             fill: '#FFFFA0',
             stroke: '#FFFFFF',
@@ -638,17 +1110,17 @@ class PacManScene extends Phaser.Scene {
         glowContainer.add([shadowText, glow1, glow2, mainText, highlightText]);
         
         // Create main container
-        section.contentText = this.add.container(0, 0);
-        section.contentText.add([glowContainer]);
+        section.contentContainer = this.add.container(0, 0);
+        section.contentContainer.add([glowContainer]);
         
-        // Simplified positioning
+        // Position heading higher to make room for orbs
         const worldPos = this.tilesToWorldPosition(section.tileX, section.tileY);
-        section.contentText.setPosition(worldPos.x, worldPos.y - 60);
+        section.contentContainer.setPosition(worldPos.x, worldPos.y - 60);
         
         // Animate content in
-        section.contentText.setAlpha(0).setScale(0.3);
+        section.contentContainer.setAlpha(0).setScale(0.3);
         this.tweens.add({
-            targets: section.contentText,
+            targets: section.contentContainer,
             alpha: 1,
             scale: 1,
             duration: 500,
@@ -667,7 +1139,7 @@ class PacManScene extends Phaser.Scene {
         
         // Subtle floating animation
         this.tweens.add({
-            targets: section.contentText,
+            targets: section.contentContainer,
             y: worldPos.y - 60 + 5,
             duration: 2000,
             yoyo: true,
@@ -677,24 +1149,24 @@ class PacManScene extends Phaser.Scene {
     }
 
     hideSectionContent(section) {
-        if (section.contentText && section.contentText.active) {
+        if (section.contentContainer && section.contentContainer.active) {
             this.tweens.add({
-                targets: section.contentText,
+                targets: section.contentContainer,
                 alpha: 0,
                 scale: 0.5,
                 duration: 300,
                 ease: 'Power2',
                 onComplete: () => {
-                    // Check if contentText still exists and is active before destroying
-                    if (section.contentText && section.contentText.active) {
-                        section.contentText.destroy();
+                    // Check if contentContainer still exists and is active before destroying
+                    if (section.contentContainer && section.contentContainer.active) {
+                        section.contentContainer.destroy();
                     }
-                    section.contentText = null;
+                    section.contentContainer = null;
                 }
             });
         } else {
-            // If contentText doesn't exist or is already destroyed, just set to null
-            section.contentText = null;
+            // If contentContainer doesn't exist or is already destroyed, just set to null
+            section.contentContainer = null;
         }
     }
 
@@ -800,6 +1272,10 @@ class PacManScene extends Phaser.Scene {
         this.load.image('projects', 'assets/projects.png');
         this.load.image('skills', 'assets/skills.png');
         this.load.image('about-me', 'assets/about-me.png');
+        this.load.image('forcepoint-logo', 'assets/forcepoint-neon-logo.png');
+        this.load.image('ucr-logo', 'assets/ucr-neon-logo.png');
+        this.load.image('serc-logo', 'assets/serc-neon-logo.png');
+        this.load.image('smartbridge-logo', 'assets/smartbridge-neon-logo.png');
     }
 
     create() {
@@ -810,10 +1286,14 @@ class PacManScene extends Phaser.Scene {
         this.pacmanInitialized = false;
         this.animationsStarted = false; // Flag to prevent multiple animation starts
         this.fontLoaded = false;
+        this.overlayOpen = false; // Track overlay state
+
+        // Create section data
+        this.createSectionData();
 
         WebFont.load({
             custom: {
-                families: ['Pixelify Sans'],
+                families: ['Pixelify Sans Bold', 'Pixelify Sans Regular'],
                 urls: ['index.css']
             },
             active: () => {
@@ -864,6 +1344,11 @@ class PacManScene extends Phaser.Scene {
 
     // Add cleanup method for when scene is destroyed
     destroy() {
+        // Close overlay if open
+        if (this.overlayOpen) {
+            this.closeOverlay();
+        }
+
         // Stop any active camera animation
         if (this.activeCameraTween) {
             this.activeCameraTween.stop();
@@ -881,10 +1366,10 @@ class PacManScene extends Phaser.Scene {
         // Clean up all section content
         if (this.sectionIcons) {
             this.sectionIcons.forEach(section => {
-                if (section.contentText && section.contentText.active) {
-                    section.contentText.destroy();
+                if (section.contentContainer && section.contentContainer.active) {
+                    section.contentContainer.destroy();
                 }
-                section.contentText = null;
+                section.contentContainer = null;
             });
         }
         
