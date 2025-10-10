@@ -276,11 +276,11 @@ class PacManScene extends Phaser.Scene {
                     title: 'Machine Learning Intern',
                     company: 'Smartbridge',
                     period: 'June 2019 - July 2019',
-                    description: 'Developed a facial recognition module using OpenCV and scikit-learn.',
+                    description: 'Developed a facial recognition module using Python, OpenCV and Scikit-Learn for tackling identity theft via facial spoofing attacks in biometric authentication systems.',
                     technologies: ['OpenCV', 'scikit-learn', 'NumPy', 'Pandas', 'Matplotlib', 'PyTorch', 'TensorFlow'],
                     achievements: [
-                        'Developed a facial recognition dataset using OpenCV & NumPy for data analytics and data modeling.',
-                        'Implemented anomaly detection algorithms using scikit-learn and PyTorch, testing & refining the model\'s problem solving aptitude to achieve optimal accuracy based on the confusion matrix thereby mitigating identity theft risks.',
+                        'Developed a facial recognition module using OpenCV & NumPy for data analytics and data modeling.',
+                        'Implemented anomaly detection algorithms using scikit-learn and PyTorch, testing & refining the model\'s problem solving aptitude to achieve optimal accuracy based on the confusion matrix, thereby mitigating identity theft risks.',
                     ]
                 },
                 {
@@ -288,7 +288,7 @@ class PacManScene extends Phaser.Scene {
                     title: 'Full Stack Developer',
                     company: 'SERC, IIIT Hyderabad',
                     period: 'June 2020 - July 2020',
-                    description: 'Worked on Virtual Labs platform development and maintenance.',
+                    description: 'Developed interactive web interfaces for programming lab simulations and contributed to the Virtual Labs platform at IIIT Hyderabad, making coding concepts more interactive for students.',
                     technologies: ['JavaScript', 'TypeScript', 'React', 'Node.js', 'Express.js', 'Socket.io', 'MongoDB'],
                     achievements: [
                         'Resolved front-end bugs for Virtual Labs at IIIT Hyderabad, enhancing user experience and system stability.',
@@ -300,7 +300,7 @@ class PacManScene extends Phaser.Scene {
                     title: 'Software Engineer',
                     company: 'Forcepoint',
                     period: 'July 2022 - August 2024',
-                    description: 'Developed and maintained cybersecurity solutions using design patterns like CQRS & DDD. Worked on threat detection systems and user interface improvements.',
+                    description: 'Developed and maintained cybersecurity solutions using design patterns like CQRS & DDD. Worked on threat detection systems and user interface improvements for Remote Browser Isolation (RBI) and Cloud Access Security Broker (CASB).',
                     technologies: ['JavaScript', 'TypeScript', 'React', 'Node.js', 'Python', 'AWS', 'Kubernetes', 'Kafka', 'Docker', 'Memcached', 'Redis', 'MongoDB', 'MariaDB', 'Amazon RDS'],
                     achievements: [
                         'Products : RBI (Remote Browser Isolation) & CASB (Cloud Access Security Broker)',
@@ -314,7 +314,7 @@ class PacManScene extends Phaser.Scene {
                     title: 'Research Assistant',
                     company: 'UC Riverside',
                     period: 'Jun 2025 - Present',
-                    description: 'Leading projects to understand transcription dysregulation in human diseases using machine learning and systems biology approaches.',
+                    description: 'Built and optimized ML pipelines on HPCC Linux servers for large-scale genomic data, leveraging Bash scripting and CUDA libraries to accelerate training and inference of foundational models.',
                     technologies: ['Pytorch', 'TensorFlow', 'HuggingFace', 'WandB', 'LangChain'],
                     achievements: [
                         'Developed an ML framework to process high-throughput scRNA data, expediting viral-host interaction analysis by 40%.',
@@ -483,17 +483,18 @@ class PacManScene extends Phaser.Scene {
             orbContainer.add([orb]);
             
             // Store orb data
-            const orbData = {
+            const orbObject = {
                 container: orbContainer,
                 orb: orb,
                 glows: [],
                 data: item,
                 isInteracted: false,
+                canInteract: true,
                 originalX: orbX,
                 originalY: orbY
             };
             
-            section.orbs.push(orbData);
+            section.orbs.push(orbObject);
             section.orbsContainer.add(orbContainer);
             
             // Add physics body for collision detection
@@ -503,7 +504,7 @@ class PacManScene extends Phaser.Scene {
 
             // Collision with Pacman
             this.physics.add.overlap(this.pacman, orbContainer, () => {
-                this.handleOrbInteraction(orbData);
+                this.handleOrbInteraction(orbObject, section);
             });
         });
         
@@ -518,11 +519,11 @@ class PacManScene extends Phaser.Scene {
 
     // Animation for orbs
     startOrbAnimations(section) {
-        section.orbs.forEach(orbData => {
+        section.orbs.forEach(orb => {
             // Floating animation
             this.tweens.add({
-                targets: orbData.container,
-                y: orbData.originalY + 2, // Subtle movement
+                targets: orb.container,
+                y: orb.originalY + 2, // Subtle movement
                 duration: 1500,
                 yoyo: true,
                 repeat: -1,
@@ -532,15 +533,15 @@ class PacManScene extends Phaser.Scene {
     }
 
     // Interaction handler when Pacman touches an orb
-    handleOrbInteraction(orbData) {
-        if (orbData.isInteracted || this.overlayOpen) return;
+    handleOrbInteraction(orbObject, section) {
+        if (orbObject.isInteracted || this.overlayOpen || !orbObject.canInteract) return;
         
-        orbData.isInteracted = true;
-        this.showOverlay(orbData.data);
+        orbObject.isInteracted = true;
+        this.showOverlay(orbObject, section);
         
         // Visual feedback for interaction
         this.tweens.add({
-            targets: orbData.container,
+            targets: orbObject.container,
             scale: 1.3,
             duration: 200,
             yoyo: true,
@@ -549,12 +550,33 @@ class PacManScene extends Phaser.Scene {
     }
 
     // Show overlay with details
-    showOverlay(data) {
+    showOverlay(orbObject, section) {
+        // Close any existing overlay first
+        if (this.overlayOpen) {
+            this.closeOverlay();
+            // Wait a moment for cleanup to complete
+            this.time.delayedCall(50, () => {
+                this.createNewOverlay(orbObject, section);
+            });
+            return;
+        }
+        
+        this.createNewOverlay(orbObject, section);
+    }
+    
+    createNewOverlay(orbObject, section) {
+        // Safety check - don't create overlay if one already exists
+        if (this.overlayOpen || this.overlayBg || this.overlayContainer) {
+            console.log('Overlay already exists, skipping creation');
+            return;
+        }
+        
         this.overlayOpen = true;
+        orbObject.canInteract = false;
+        const data = orbObject.data;
 
         // Get current camera properties
         const camera = this.cameras.main;
-
         // Create overlay background - covers the entire visible area
         this.overlayBg = this.add.graphics();
         this.overlayBg.fillStyle(0x000000, 0.7);
@@ -562,9 +584,9 @@ class PacManScene extends Phaser.Scene {
         this.overlayBg.setScrollFactor(0); // Fixed to camera
         this.overlayBg.setDepth(1000); // Ensure it's on top
 
-        // Calculate overlay size relative to visible viewport - make it smaller to ensure everything fits
-        const overlayWidth = Math.min(camera.width * 0.6, 350); // Reduced to 60% and smaller max
-        const overlayHeight = Math.min(camera.height * 0.35, 250); // Reduced to 35% and smaller max
+        // Keep your current overlay size
+        const overlayWidth = Math.min(camera.width * 0.6, 350);
+        const overlayHeight = Math.min(camera.height * 0.35, 250);
 
         // Create overlay container at SCREEN CENTER
         this.overlayContainer = this.add.container(camera.width / 2, camera.height / 2);
@@ -578,94 +600,251 @@ class PacManScene extends Phaser.Scene {
         overlayWindow.fillRoundedRect(-overlayWidth/2, -overlayHeight/2, overlayWidth, overlayHeight, 15);
         overlayWindow.strokeRoundedRect(-overlayWidth/2, -overlayHeight/2, overlayWidth, overlayHeight, 15);
         
-        // Scale text sizes based on available space
-        const baseScale = Math.min(overlayWidth / 350, overlayHeight / 250);
-        const textScale = Math.max(1.0, Math.min(1.0, baseScale));
+        // Create non-scrollable content container
+        this.nonScrollableContent = this.add.container(0, 0);
+        this.nonScrollableContent.setScrollFactor(0); // Fixed to camera
+        this.nonScrollableContent.setDepth(1002); // Ensure it's above the overlayWindow & overlayContainer
+
+        // Position main content container at the top
+        this.nonScrollableContent.setPosition(-overlayWidth/2, -overlayHeight/2);
+        this.nonScrollableContent.setSize(overlayWidth, overlayHeight/2);
+
+        // Create scrollable content container
+        this.scrollableContent = this.add.container(0, 0);
+        this.scrollableContent.setScrollFactor(0); // Fixed to camera
+        this.scrollableContent.setDepth(1002); // Ensure it's above the overlayWindow & overlayContainer
+
+        // Position scrollable content in the lower half of the OverlayContainer
+        this.scrollableContent.setPosition(-overlayWidth/2, 0);
+        this.scrollableContent.setSize(overlayWidth, overlayHeight/2);
+
+        // Calculate text scaling for your specific overlay size - much smaller text
+        const textScale = Math.max(0.5, Math.min(1, overlayWidth / 350));
+        // const textScale = 1;
         
-        // Calculate vertical spacing based on overlay height
-        const verticalSpacing = overlayHeight / 8; // Divide height into 8 sections
-        const contentPadding = 20; // Padding from edges
-        
+        // Content positioning - start from top with appropriate padding
+        let currentY = 20; // Start from top with smaller padding
+        const contentPadding = 20;
+        const lineSpacing = 10; // Smaller line spacing
+
+
         // Add logo at top
-        const logo = this.add.image(0, -overlayHeight/2 + verticalSpacing, data.logo);
-        logo.setScale(0.06 * textScale);
+        const logo = this.add.image(overlayWidth/2, currentY + contentPadding, data.logo);
+        logo.setScale(0.07 * textScale);
+        currentY += contentPadding + 2*lineSpacing;
         
-        // Add title with responsive font size and position
-        const titleSize = Math.floor(16 * textScale);
-        const title = this.add.text(0, -overlayHeight/2 + verticalSpacing * 2, data.title, {
+        // Add title
+        const titleSize = Math.floor(14 * textScale);
+        const title = this.add.text(overlayWidth/2, currentY + contentPadding, data.title, {
             fontSize: `${titleSize}px`,
             fill: '#FFE400',
-            fontFamily: this.fontLoaded ? 'Pixelify Sans Bold' : 'Arial',
+            // fontFamily: this.fontLoaded ? 'Pixelify Sans' : 'Arial',
+            fontFamily: 'Monaco',
             fontWeight: 'bold'
         }).setOrigin(0.5);
+        currentY += titleSize/2 + 2*lineSpacing;
         
-        // Add company and period with responsive font size
-        const subtitleSize = Math.floor(12 * textScale);
-        const company = this.add.text(0, -overlayHeight/2 + verticalSpacing * 2.5, `${data.company} | ${data.period}`, {
+        // Add company and period
+        const subtitleSize = Math.floor(10 * textScale);
+        const company = this.add.text(overlayWidth/2, currentY + contentPadding, `${data.company} | ${data.period}`, {
             fontSize: `${subtitleSize}px`,
             fill: '#00FFFF',
-            fontFamily: this.fontLoaded ? 'Pixelify Sans Regular' : 'Arial'
+            // fontFamily: this.fontLoaded ? 'Pixelify Sans' : 'Arial'
+            fontFamily: 'Monaco'
         }).setOrigin(0.5);
+        currentY += subtitleSize/2 + 2*lineSpacing;
         
-        // Add description with responsive font size and width
+        // Reset position for scrollableContent container
+        currentY = overlayHeight/2;
+
+        // Add description
         const bodySize = Math.floor(10 * textScale);
-        const description = this.add.text(0, -overlayHeight/2 + verticalSpacing * 3, data.description, {
+        const description = this.add.text(overlayWidth/2, overlayHeight/6 + 0.6*lineSpacing, data.description, { // We use overlayHeight/4 here because our description itself takes 4 lines of space
             fontSize: `${bodySize}px`,
             fill: '#FFFFFF',
-            fontFamily: this.fontLoaded ? 'Pixelify Sans Regular' : 'Arial',
+            // fontFamily: this.fontLoaded ? 'Pixelify Sans' : 'Arial',
+            fontFamily: 'Monaco',
             wordWrap: { width: overlayWidth - contentPadding * 2 },
             align: 'center'
         }).setOrigin(0.5);
+        currentY -= 1.5*lineSpacing;
         
-        // Add technologies with responsive sizing
+        // Add technologies title
         const sectionTitleSize = Math.floor(12 * textScale);
-        const techTitle = this.add.text(0, -overlayHeight/2 + verticalSpacing * 4, 'Technologies:', {
+        const techTitle = this.add.text(overlayWidth/2, currentY, 'Technologies:', {
             fontSize: `${sectionTitleSize}px`,
             fill: '#FFE400',
-            fontFamily: this.fontLoaded ? 'Pixelify Sans Bold' : 'Arial',
+            // fontFamily: this.fontLoaded ? 'Pixelify Sans' : 'Arial',
+            fontFamily: 'Monaco',
             fontWeight: 'bold'
         }).setOrigin(0.5);
-        
+        currentY += 2*lineSpacing;
+
+        // Add technologies body
         const techBodySize = Math.floor(10 * textScale);
-        const technologies = this.add.text(0, -overlayHeight/2 + verticalSpacing * 5, data.technologies.join(' • '), {
+        const technologies = this.add.text(overlayWidth/2, currentY + contentPadding, data.technologies.join(' • '), {
             fontSize: `${techBodySize}px`,
             fill: '#00FF00',
-            fontFamily: this.fontLoaded ? 'Pixelify Sans Regular' : 'Arial',
+            // fontFamily: this.fontLoaded ? 'Pixelify Sans' : 'Arial',
+            fontFamily: 'Monaco',
             wordWrap: { width: overlayWidth - contentPadding * 2 },
             align: 'center'
         }).setOrigin(0.5);
         
-        // Add achievements with responsive sizing
-        const achieveTitle = this.add.text(0, -overlayHeight/2 + verticalSpacing * 6, 'Key Achievements:', {
+        const techHeight = technologies.height;
+        currentY += techHeight + 2*lineSpacing;
+        
+        // Add achievements title
+        const achieveTitle = this.add.text(overlayWidth/2, currentY + lineSpacing, 'Key Achievements:', {
             fontSize: `${sectionTitleSize}px`,
             fill: '#FFE400',
-            fontFamily: this.fontLoaded ? 'Pixelify Sans Bold' : 'Arial',
+            // fontFamily: this.fontLoaded ? 'Pixelify Sans' : 'Arial',
+            fontFamily: 'Monaco',
             fontWeight: 'bold'
         }).setOrigin(0.5);
+        currentY += sectionTitleSize + lineSpacing;
         
-        const achievements = this.add.text(0, -overlayHeight/2 + verticalSpacing * 7, data.achievements.map(a => `• ${a}`).join('\n'), {
+        const achievements = this.add.text(overlayWidth/2, currentY + lineSpacing, data.achievements.map(a => `• ${a}`).join('\n\n'), {
             fontSize: `${techBodySize}px`,
             fill: '#FFFFFF',
-            fontFamily: this.fontLoaded ? 'Pixelify Sans Regular' : 'Arial',
+            // fontFamily: this.fontLoaded ? 'Pixelify Sans' : 'Arial',
+            fontFamily: 'Arial',
             wordWrap: { width: overlayWidth - contentPadding * 2 },
             align: 'left',
-            lineSpacing: 1
+            lineSpacing: 2
         }).setOrigin(0.5, 0);
         
-        // Add close instruction with responsive sizing
-        const instructionSize = Math.floor(10 * textScale);
-        const closeText = this.add.text(0, overlayHeight/2 - verticalSpacing * 0.8, 'Press ESC to close', {
-            fontSize: `${instructionSize}px`,
-            fill: '#888888',
-            fontFamily: this.fontLoaded ? 'Pixelify Sans Regular' : 'Arial',
+        const achievementsHeight = achievements.height;
+        currentY += achievementsHeight + lineSpacing;
+
+        // Add non-scrollable content elements to main content container
+        this.nonScrollableContent.add([
+            logo, title, company
+        ]);
+
+        // Add all the scrollable content elements to scrollable container
+        this.scrollableContent.add([
+            description, techTitle, technologies, achieveTitle, achievements
+        ]);
+        
+        // Calculate total content height and if scrolling is needed
+        const startY = -overlayHeight/2 + 20; // content start Y
+        const totalContentHeight = currentY - startY; // Total content height from start position
+        const availableHeight = overlayHeight - 50;
+        const needsScrolling = totalContentHeight > availableHeight;
+        console.log('needsScrolling', needsScrolling);
+
+        // Create & position the mask graphics
+        const worldPos = this.tilesToWorldPosition(section.tileX, section.tileY);
+        const maskShape = this.add.graphics();
+        maskShape.fillStyle(0x001122); // Color doesn't matter for the mask, just its shape
+        maskShape.fillRect(worldPos.x - overlayWidth/2, worldPos.y + 1.5*lineSpacing, overlayWidth, overlayHeight/4 + contentPadding);
+
+        this.maskShape = maskShape;
+        // Create the mask itself
+        const mask = maskShape.createGeometryMask();
+
+        // Apply the mask to the scrollable content
+        this.scrollableContent.setMask(mask);
+        
+        // Scroll properties
+        this.scrollY = 0;
+        this.maxScrollY = needsScrolling ? Math.max(0, totalContentHeight - availableHeight) : 0;
+        console.log('maxScrollY', this.maxScrollY);
+        
+        // Add scroll instructions if needed
+        let scrollInstructions = null;
+        // if (needsScrolling) {
+        //     scrollInstructions = this.add.text(0, overlayHeight/2 - 25, 'Use Mouse Wheel to scroll', {
+        //         fontSize: `${Math.floor(8 * textScale)}px`,
+        //         // fill: '#888888',
+        //         fill: '#FFFFFF',
+        //         // fontFamily: this.fontLoaded ? 'Pixelify Sans' : 'Arial',
+        //         fontFamily: 'Monaco',
+        //         fontStyle: 'italic'
+        //     }).setOrigin(0.5);
+        // }
+        
+        // Add close instruction
+        const closeText = this.add.text(0, overlayHeight/2 - 15, 'Use Mouse Wheel to scroll | Press ESC to close', {
+            fontSize: `${Math.floor(8 * textScale)}px`,
+            // fill: '#888888',
+            fill: '#FFFFFF',
+            // fontFamily: this.fontLoaded ? 'Pixelify Sans' : 'Arial',
+            fontFamily: 'Monaco',
             fontStyle: 'italic'
         }).setOrigin(0.5);
         
-        // Add all elements to container
-        this.overlayContainer.add([
-            overlayWindow, logo, title, company, description, 
-            techTitle, technologies, achieveTitle, achievements, closeText
-        ]);
+        // Add all elements to overlayContainer
+        const elementsToAdd = [overlayWindow, this.nonScrollableContent, this.scrollableContent, closeText];
+        if (scrollInstructions) elementsToAdd.push(scrollInstructions);
+        this.overlayContainer.add(elementsToAdd);
+
+        const debug = 0;
+        if (debug > 0) {
+            switch (debug) {
+                case 1:
+                    // For debugging the nonScrollableContent's position, draw a green rectangle around it
+                    const debugGraphics1 = this.add.graphics();
+                    debugGraphics1.fillStyle(0x00ff00, 0.5);
+                    debugGraphics1.fillRect(0, 0, this.nonScrollableContent.width, this.nonScrollableContent.height);
+                    this.nonScrollableContent.add(debugGraphics1);
+                    break;
+                case 2:
+                    // For debugging the scrollableContent's position, draw a red rectangle around it
+                    const debugGraphics2 = this.add.graphics();
+                    debugGraphics2.fillStyle(0x0000ff, 0.5);
+                    debugGraphics2.fillRect(0, 0, this.scrollableContent.width, this.scrollableContent.height);
+                    this.scrollableContent.add(debugGraphics2);
+                    break;
+                case 3:
+                    // For debugging both the nonScrollableContent and the scrollableContent
+                    const debugGraphics3a = this.add.graphics();
+                    debugGraphics3a.fillStyle(0x0000ff, 0.5);
+                    debugGraphics3a.fillRect(0, 0, this.nonScrollableContent.width, this.nonScrollableContent.height);
+                    this.nonScrollableContent.add(debugGraphics3a);
+                    
+                    const debugGraphics3b = this.add.graphics();
+                    debugGraphics3b.fillStyle(0x00ff00, 0.5);
+                    debugGraphics3b.fillRect(0, 0, this.scrollableContent.width, overlayHeight/2);
+                    this.scrollableContent.add(debugGraphics3b);
+                    break;
+                case 4:
+                    // For debugging the mask's position, draw a blue rectangle around it
+                    const debugGraphics4 = this.add.graphics();
+                    debugGraphics4.fillStyle(0x0000ff, 0.5);
+                    debugGraphics4.fillRect(0, 3*contentPadding + overlayHeight/2, overlayWidth, overlayHeight/4 + contentPadding);
+                    this.scrollableContent.add(debugGraphics4);
+                    break;
+                default:
+                    // For debugging everything
+                    const debugGraphics5a = this.add.graphics();
+                    debugGraphics5a.fillStyle(0x0000ff, 0.5);
+                    debugGraphics5a.fillRect(0, 0, this.nonScrollableContent.width, this.nonScrollableContent.height);
+                    this.nonScrollableContent.add(debugGraphics5a);
+
+                    const debugGraphics5b = this.add.graphics();
+                    debugGraphics5b.fillStyle(0x0000ff, 0.5);
+                    debugGraphics5b.fillRect(0, 0, this.scrollableContent.width, this.scrollableContent.height);
+                    this.scrollableContent.add(debugGraphics5b);
+                    
+                    const debugGraphics5c = this.add.graphics();
+                    debugGraphics5c.fillStyle(0x0000ff, 0.5);
+                    debugGraphics5c.fillRect(0, 3*contentPadding + overlayHeight/2, overlayWidth, overlayHeight/4 + contentPadding);
+                    this.scrollableContent.add(debugGraphics5c);
+                    break;
+            }
+        }
+
+        // Setup scroll controls if needed
+        if (needsScrolling) {
+            // Mouse-only scroll: prevent default page scroll while overlay open
+            this.input.on('wheel', (pointer, gameObjects, deltaX, deltaY) => {
+                if (this.overlayOpen) {
+                    this.scrollContent(deltaY, overlayHeight);
+                }
+            });
+        }
         
         // Animate overlay in
         this.overlayContainer.setAlpha(0).setScale(0.8);
@@ -679,7 +858,61 @@ class PacManScene extends Phaser.Scene {
         
         // Setup ESC key listener
         this.escKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ESC);
+
+        // Create a temporary property to hold the current orbObject
+        this.currentOrbToClose = orbObject;
+
+        // Use the standard listener, which will call the closeOverlay method on the scene instance.
+        // The orbObject reference is now stored on the scene instance.
         this.escKey.on('down', this.closeOverlay, this);
+    }
+
+    // Cleanup overlay elements immediately
+    cleanupOverlayElements() {
+        // Remove the mask and destroy it
+        if (this.scrollableContent && this.scrollableContent.mask) {
+            this.scrollableContent.mask.destroy();
+            this.scrollableContent.setMask(null);
+        }
+
+        // Destroy the graphics object that created the mask
+        if (this.maskShape) {
+            this.maskShape.destroy();
+            this.maskShape = null;
+        }
+
+        // Destroy overlay background first
+        if (this.overlayBg) {
+            this.overlayBg.destroy();
+            this.overlayBg = null;
+        }
+        
+        // Destroy overlay container and its children
+        if (this.overlayContainer) {
+            this.overlayContainer.destroy();
+            this.overlayContainer = null;
+        }
+        
+        // Destroy non-scrollable content container
+        if (this.nonScrollableContent) {
+            this.nonScrollableContent.destroy();
+            this.nonScrollableContent = null;
+        }
+        
+        // Destroy scrollable content container
+        if (this.scrollableContent) {
+            this.scrollableContent.destroy();
+            this.scrollableContent = null;
+        }
+    }
+
+    // Handle content scrolling
+    scrollContent(deltaY, overlayHeight) {
+        if (!this.scrollableContent || this.maxScrollY <= 0) return;
+        this.scrollY = Phaser.Math.Clamp(this.scrollY + deltaY, 0, this.maxScrollY);
+
+        this.scrollableContent.setY(-this.scrollY);
+        // this.scrollableContent.setY(this.scrollY + (overlayHeight / 2 + 20));
     }
 
     // Close overlay when ESC is pressed
@@ -687,42 +920,72 @@ class PacManScene extends Phaser.Scene {
         if (!this.overlayOpen) return;
         
         this.overlayOpen = false;
+
+        // Stop any existing tweens on overlay elements to prevent conflicts
+        if (this.overlayContainer) {
+            this.tweens.killTweensOf(this.overlayContainer);
+        }
+
+        // Remove wheel event listener
+        this.input.off('wheel');
         
-        // Animate overlay out
-        this.tweens.add({
-            targets: this.overlayContainer,
-            alpha: 0,
-            scale: 0.5,
-            duration: 200,
-            ease: 'Power2',
-            onComplete: () => {
-                if (this.overlayBg) {
-                    this.overlayBg.destroy();
-                    this.overlayBg = null;
+        // Immediate cleanup - don't wait for animation
+        this.cleanupOverlayElements();
+        
+        // Optional: Add a quick fade out animation
+        if (this.overlayContainer && this.overlayContainer.active) {
+            this.tweens.add({
+                targets: this.overlayContainer,
+                alpha: 0,
+                scale: 0.5,
+                duration: 100, // Shorter duration for rapid operations
+                ease: 'Power2',
+                onComplete: () => {
+                    // Double-check cleanup
+                    this.cleanupOverlayElements();
                 }
-                if (this.overlayContainer) {
-                    this.overlayContainer.destroy();
-                    this.overlayContainer = null;
-                }
-            }
-        });
+            });
+        }
         
         // Remove ESC key listener
         if (this.escKey) {
             this.escKey.off('down', this.closeOverlay, this);
             this.escKey = null;
         }
-        
-        // Reset all orb interactions after a cooldown
-        this.time.delayedCall(1000, () => {
+
+        // Reset the isInteracted flag for all orbs
+        this.sectionIcons.forEach(section => {
+            if (section.orbs) {
+                section.orbs.forEach(orb => {
+                    orb.isInteracted = false;
+                });
+            }
+        });
+
+        // Retrieve the orb object that was stored in showOverlay
+        const orbObject = this.currentOrbToClose;
+
+        console.log('orbObject after closeOverlay', orbObject);
+        // Reset the canInteract flag for the orbObject if provided, otherwise reset for all orbs
+        // Reset the canInteract flag using the stored orbObject reference
+        if (orbObject) {
+            // Use a short delay (e.g., 200ms) to prevent immediate re-eating, 
+            // which is safer than 5000ms.
+            this.time.delayedCall(2000, () => {
+                orbObject.canInteract = true;
+                this.currentOrbToClose = null; // Clean up the stored reference
+            }, [], this);
+        } else {
+            // Fallback or full reset if no specific orb was tracked
             this.sectionIcons.forEach(section => {
                 if (section.orbs) {
-                    section.orbs.forEach(orbData => {
-                        orbData.isInteracted = false;
+                    section.orbs.forEach(orb => {
+                        orb.canInteract = true;
                     });
                 }
             });
-        });
+            this.currentOrbToClose = null; // Clean up the stored reference
+        }
     }
 
     setupCamera() {
@@ -903,12 +1166,6 @@ class PacManScene extends Phaser.Scene {
 
         const pacmanTileX = Math.floor((this.pacman.x - this.mapOffsetX) / (32 * this.currentScale));
         const pacmanTileY = Math.floor((this.pacman.y - this.mapOffsetY) / (32 * this.currentScale));
-        
-        // Debug logging to see if proximity detection is working
-        console.log(`Pacman at tile: (${pacmanTileX}, ${pacmanTileY})`);
-        console.log(`Pacman world pos: (${this.pacman.x.toFixed(2)}, ${this.pacman.y.toFixed(2)})`);
-        console.log(`Map offset: (${this.mapOffsetX.toFixed(2)}, ${this.mapOffsetY.toFixed(2)})`);
-        console.log(`Current scale: ${this.currentScale.toFixed(2)}`);
 
         this.sectionIcons.forEach((section, index) => {
             const innerBounds = section.innerBounds;
@@ -988,19 +1245,19 @@ class PacManScene extends Phaser.Scene {
 
         // Reset orb interactions when hiding section
         if (section.orbs) {
-            section.orbs.forEach(orbData => {
+            section.orbs.forEach(orb => {
                 // Reset orb interaction state
-                orbData.isInteracted = false;
+                orb.isInteracted = false;
                 // Stop any active tweens on orbs
-                this.tweens.killTweensOf(orbData.container);
-                this.tweens.killTweensOf(orbData.orb);
+                this.tweens.killTweensOf(orb.container);
+                this.tweens.killTweensOf(orb.orb);
             });
         }
         
         // Hide content first
         this.hideSectionContent(section);
         
-        // Stop any existing tweens on this container to prevent conflicts
+        // Stop any existing tweens on this section's elements to prevent conflicts
         this.tweens.killTweensOf(section.container);
         this.tweens.killTweensOf(section.glows);
         this.tweens.killTweensOf(section.icon);
@@ -1287,6 +1544,7 @@ class PacManScene extends Phaser.Scene {
         this.animationsStarted = false; // Flag to prevent multiple animation starts
         this.fontLoaded = false;
         this.overlayOpen = false; // Track overlay state
+        // this.canInteract = true; // Track if orb can be interacted with (to deal with race condition)
 
         // Create section data
         this.createSectionData();
