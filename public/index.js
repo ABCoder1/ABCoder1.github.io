@@ -502,10 +502,11 @@ class PacManScene extends Phaser.Scene {
             orbContainer.body.setSize(30, 30); // Small collision area
             orbContainer.body.setImmovable(true);
 
-            // Collision with Pacman
-            this.physics.add.overlap(this.pacman, orbContainer, () => {
+            // Collision with Pacman - keep reference to collider per orb
+            const overlapCollider = this.physics.add.overlap(this.pacman, orbContainer, () => {
                 this.handleOrbInteraction(orbObject, section);
             });
+            orbObject.overlapCollider = overlapCollider;
         });
         
         // Adding orbs to section content for proper cleanup
@@ -537,6 +538,10 @@ class PacManScene extends Phaser.Scene {
         if (orbObject.isInteracted || this.overlayOpen || !orbObject.canInteract) return;
         
         orbObject.isInteracted = true;
+        // Disable this orb's overlap collider to avoid immediate retrigger while Pacman overlaps
+        if (orbObject.overlapCollider) {
+            orbObject.overlapCollider.active = false;
+        }
         this.showOverlay(orbObject, section);
         
         // Visual feedback for interaction
@@ -555,9 +560,9 @@ class PacManScene extends Phaser.Scene {
         if (this.overlayOpen) {
             this.closeOverlay();
             // Wait a moment for cleanup to complete
-            this.time.delayedCall(50, () => {
-                this.createNewOverlay(orbObject, section);
-            });
+            // this.time.delayedCall(200, () => {
+            //     this.createNewOverlay(orbObject, section);
+            // });
             return;
         }
         
@@ -953,38 +958,32 @@ class PacManScene extends Phaser.Scene {
             this.escKey = null;
         }
 
-        // Reset the isInteracted flag for all orbs
-        this.sectionIcons.forEach(section => {
-            if (section.orbs) {
-                section.orbs.forEach(orb => {
-                    orb.isInteracted = false;
-                });
-            }
-        });
-
         // Retrieve the orb object that was stored in showOverlay
         const orbObject = this.currentOrbToClose;
 
         console.log('orbObject after closeOverlay', orbObject);
-        // Reset the canInteract flag for the orbObject if provided, otherwise reset for all orbs
-        // Reset the canInteract flag using the stored orbObject reference
+        // Only reset the current orb; leave others intact
         if (orbObject) {
-            // Use a short delay (e.g., 200ms) to prevent immediate re-eating, 
-            // which is safer than 5000ms.
-            this.time.delayedCall(2000, () => {
+            // Reset flags
+            orbObject.isInteracted = false;
+            orbObject.canInteract = false;
+
+            // Re-enable this orb's collider after a short delay to avoid immediate retrigger
+            this.time.delayedCall(200, () => {
+                if (orbObject.overlapCollider) {
+                    orbObject.overlapCollider.active = true;
+                }
+            }, [], this);
+
+            this.currentOrbToClose = null;
+            
+            // Allow interaction again after a cooldown
+            this.time.delayedCall(1200, () => {
                 orbObject.canInteract = true;
-                this.currentOrbToClose = null; // Clean up the stored reference
             }, [], this);
         } else {
-            // Fallback or full reset if no specific orb was tracked
-            this.sectionIcons.forEach(section => {
-                if (section.orbs) {
-                    section.orbs.forEach(orb => {
-                        orb.canInteract = true;
-                    });
-                }
-            });
-            this.currentOrbToClose = null; // Clean up the stored reference
+            // Fallback: do not touch other orbs' state; just clear reference
+            this.currentOrbToClose = null;
         }
     }
 
