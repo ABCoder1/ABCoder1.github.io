@@ -13,3 +13,19 @@ html, body {
 canvas {
     display: block; /* Remove any inline spacing */
 }
+
+/* Loading Pixelify Sans Bold font */
+@font-face {
+    font-family: 'Pixelify Sans Bold';
+    src: url('assets/fonts/PixelifySans-Bold.ttf') format('truetype');
+    font-weight: bold;
+    font-style: normal;
+}
+
+/* Loading Pixelify Sans Regular font */
+@font-face {
+    font-family: 'Pixelify Sans Regular';
+    src: url('assets/fonts/PixelifySans-Regular.ttf') format('truetype');
+    font-weight: normal;
+    font-style: normal;
+}
