@@ -478,20 +478,29 @@ class PacManScene extends Phaser.Scene {
             orb.setScale(0.07); // Small size
             orb.setAlpha(0.9);
             
+            // Create cooldown meter graphics
+            const cooldownMeter = this.add.graphics();
+            cooldownMeter.setAlpha(0); // Initially invisible
+            cooldownMeter.setDepth(10); // Ensure it's visible above the orb
+            
             // Create orb container at calculated position
             const orbContainer = this.add.container(orbX, orbY);
-            orbContainer.add([orb]);
+            orbContainer.add([orb, cooldownMeter]);
             
             // Store orb data
             const orbObject = {
                 container: orbContainer,
                 orb: orb,
+                cooldownMeter: cooldownMeter,
                 glows: [],
                 data: item,
                 isInteracted: false,
                 canInteract: true,
                 originalX: orbX,
-                originalY: orbY
+                originalY: orbY,
+                originalAlpha: 0.9,
+                isInCooldown: false,
+                cooldownProgress: 0
             };
             
             section.orbs.push(orbObject);
@@ -530,6 +539,97 @@ class PacManScene extends Phaser.Scene {
                 repeat: -1,
                 ease: 'Sine.easeInOut'
             });
+        });
+    }
+
+    // Start cooldown visual effect on an orb
+    startCooldownVisual(orbObject) {
+        if (!orbObject || !orbObject.orb || !orbObject.cooldownMeter) return;
+        
+        orbObject.isInCooldown = true;
+        orbObject.cooldownProgress = 0;
+        
+        // Fade the orb (reduce alpha)
+        orbObject.orb.setAlpha(0.3);
+        
+        // Show the cooldown meter and animate its appearance
+        orbObject.cooldownMeter.setAlpha(1);
+        
+        const COOLDOWN_DURATION = 1200; // milliseconds
+        const METER_RADIUS = 20; // Radius of the circular meter
+        const METER_WIDTH = 3; // Width of the arc
+        const METER_COLOR = 0x00FFFF; // Cyan color for the meter
+        
+        // Animate the cooldown progress
+        const startTime = this.time.now;
+        
+        const updateCooldown = () => {
+            if (!orbObject.isInCooldown || !orbObject.cooldownMeter) return;
+            
+            const elapsed = this.time.now - startTime;
+            orbObject.cooldownProgress = Math.min(elapsed / COOLDOWN_DURATION, 1);
+            
+            // Clear previous drawings
+            orbObject.cooldownMeter.clear();
+            
+            // Draw the cooldown progress arc
+            if (orbObject.cooldownProgress > 0) {
+                orbObject.cooldownMeter.lineStyle(METER_WIDTH, METER_COLOR, 1);
+                
+                // Calculate the end angle (in radians)
+                // Starting from top (-Math.PI/2), going clockwise
+                const startAngle = -Math.PI / 2;
+                const endAngle = startAngle + (orbObject.cooldownProgress * 2 * Math.PI);
+                
+                // Draw the arc
+                orbObject.cooldownMeter.arc(
+                    0, 0,                    // Center of the orb
+                    METER_RADIUS,             // Radius
+                    startAngle,              // Start angle
+                    endAngle,                // End angle
+                    false                     // Anticlockwise
+                );
+                orbObject.cooldownMeter.strokePath();
+            }
+            
+            // Continue updating until cooldown is complete
+            if (orbObject.cooldownProgress < 1) {
+                this.time.addEvent({
+                    delay: 16, // ~60fps
+                    callback: updateCooldown,
+                    callbackScope: this
+                });
+            }
+        };
+        
+        // Start the cooldown update loop
+        updateCooldown();
+    }
+
+    // End cooldown visual effect on an orb
+    endCooldownVisual(orbObject) {
+        if (!orbObject || !orbObject.orb || !orbObject.cooldownMeter) return;
+        
+        orbObject.isInCooldown = false;
+        
+        // Restore the orb's original alpha with a smooth transition
+        this.tweens.add({
+            targets: orbObject.orb,
+            alpha: orbObject.originalAlpha,
+            duration: 300,
+            ease: 'Power2.easeOut'
+        });
+        
+        // Hide the cooldown meter with a fade out
+        this.tweens.add({
+            targets: orbObject.cooldownMeter,
+            alpha: 0,
+            duration: 200,
+            ease: 'Power2.easeOut',
+            onComplete: () => {
+                orbObject.cooldownMeter.clear();
+                orbObject.cooldownProgress = 0;
+            }
         });
     }
 
@@ -977,9 +1077,13 @@ class PacManScene extends Phaser.Scene {
 
             this.currentOrbToClose = null;
             
+            // Start cooldown visual effect
+            this.startCooldownVisual(orbObject);
+            
             // Allow interaction again after a cooldown
             this.time.delayedCall(1200, () => {
                 orbObject.canInteract = true;
+                this.endCooldownVisual(orbObject);
             }, [], this);
         } else {
             // Fallback: do not touch other orbs' state; just clear reference
@@ -1247,9 +1351,25 @@ class PacManScene extends Phaser.Scene {
             section.orbs.forEach(orb => {
                 // Reset orb interaction state
                 orb.isInteracted = false;
+                orb.canInteract = true;
+                orb.isInCooldown = false;
+                orb.cooldownProgress = 0;
+                
+                // Restore original alpha
+                if (orb.orb && orb.originalAlpha !== undefined) {
+                    orb.orb.setAlpha(orb.originalAlpha);
+                }
+                
+                // Hide and clear cooldown meter
+                if (orb.cooldownMeter) {
+                    orb.cooldownMeter.setAlpha(0);
+                    orb.cooldownMeter.clear();
+                }
+                
                 // Stop any active tweens on orbs
                 this.tweens.killTweensOf(orb.container);
                 this.tweens.killTweensOf(orb.orb);
+                this.tweens.killTweensOf(orb.cooldownMeter);
             });
         }
         
