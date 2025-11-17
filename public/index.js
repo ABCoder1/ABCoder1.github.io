@@ -317,9 +317,9 @@ class PacManScene extends Phaser.Scene {
                     description: 'Built and optimized ML pipelines on HPCC Linux servers for large-scale genomic data, leveraging Bash scripting and CUDA libraries to accelerate training and inference of foundational models.',
                     technologies: ['Pytorch', 'TensorFlow', 'HuggingFace', 'WandB', 'LangChain'],
                     achievements: [
-                        'Developed an ML framework to process high-throughput scRNA data, expediting viral-host interaction analysis by 40%.',
-                        'Built & Deployed digital tools for lineage tracing and trajectory inference using cutting-edge single-cell RNA-Seq data.',
-                        'Provided computational insights to wet-lab scientists, speeding up iterative model fine-tuning & feedback loops by 20%.'
+                        'Designed & Developed Transformer & VAE based ML models for scRNA-Seq data to model viral-host interactions.',
+                        'Leveraged Contrastive Learning to extract latent biological features, boosting cellular differentiation prediction rate.',
+                        'Integrated MLOps and workflow orchestration with Databricks, Prometheus, and W&B to streamline ML pipelines.'
                     ]
                 }
             ],
@@ -1795,7 +1795,14 @@ class PacManPlayer extends Phaser.GameObjects.Sprite {
         this.handleMovement();
     }
 
-    handleMovement() {        
+    handleMovement() {
+        // Disable movement if overlay is open
+        if (this.scene.overlayOpen) {
+            this.body.setVelocity(0, 0);
+            this.anims.stop(); // Stop the animation when overlay is open
+            return;
+        }
+        
         // Reset direction
         this.direction.x = 0;
         this.direction.y = 0;
