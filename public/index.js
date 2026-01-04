@@ -4,82 +4,55 @@ class PacManScene extends Phaser.Scene {
         this.instructionContainer = this.add.container(0, 0);
         
         // Arrow properties
-        const arrowDistance = 80; // Distance from Pacman center
-        const arrowSize = 32;
-        const keySize = 24;
+        const arrowDistance = this.currentScale * 80; // Distance from Pacman center
+        const keyScale = this.currentScale * 0.065; // Scale for key icons
         
         // Create arrows and keys for each direction
         const directions = [
-            { key: 'W', angle: 0, x: 0, y: -arrowDistance, direction: 'up' },
-            { key: 'S', angle: 180, x: 0, y: arrowDistance, direction: 'down' },
-            { key: 'A', angle: -90, x: -arrowDistance, y: 0, direction: 'left' },
-            { key: 'D', angle: 90, x: arrowDistance, y: 0, direction: 'right' }
+            { icon: 'w-key-logo', angle: 0, x: 0, y: -arrowDistance/2, direction: 'up' },
+            { icon: 's-key-logo', angle: 0, x: 0, y: arrowDistance/2, direction: 'down' },
+            { icon: 'a-key-logo', angle: 0, x: -arrowDistance/2, y: 0, direction: 'left' },
+            { icon: 'd-key-logo', angle: 0, x: arrowDistance/2, y: 0, direction: 'right' }
         ];
         
         this.instructionArrows = [];
         
         directions.forEach(dir => {
-            // Create arrow graphics
-            const arrow = this.add.graphics();
-            arrow.fillStyle(0xFFD700, 0.8); // Gold color with transparency
-            arrow.lineStyle(2, 0xFFFFFF, 1); // White outline
+            // Calculate bounding box size based on key icon dimensions
+            // We'll use a fixed size that accommodates the key icon
+            const boxWidth = 50;
+            const boxHeight = 50;
+            const boxPadding = 5;
             
-            // Draw arrow shape
-            arrow.beginPath();
-            arrow.moveTo(0, -15);     // Top point
-            arrow.lineTo(-10, 5);     // Bottom left
-            arrow.lineTo(-5, 5);      // Inner left
-            arrow.lineTo(-5, 15);     // Bottom left inner
-            arrow.lineTo(5, 15);      // Bottom right inner
-            arrow.lineTo(5, 5);       // Inner right
-            arrow.lineTo(10, 5);      // Bottom right
-            arrow.closePath();
-            arrow.fillPath();
-            arrow.strokePath();
+            // Create bounding box (background)
+            const boundingBox = this.add.graphics();
+            // fill the bounding box with black color
+            boundingBox.fillStyle(0x000000, 0.8);
+            // make the line color to be white
+            boundingBox.lineStyle(2, 0xFFFFFF, 1);
+            boundingBox.fillRoundedRect(-boxWidth/2, -boxHeight/2, boxWidth, boxHeight, 5);
+            boundingBox.strokeRoundedRect(-boxWidth/2, -boxHeight/2, boxWidth, boxHeight, 5);
+            boundingBox.setScale(this.currentScale*0.80);
+
+            // Create key icon image
+            const keyIcon = this.add.image(0, -boxPadding, dir.icon); // Start slightly above center
+            keyIcon.setScale(this.currentScale * 0.065);
+            keyIcon.setAlpha(1.0);
             
-            // Rotate arrow to correct direction
-            arrow.setRotation(Phaser.Math.DegToRad(dir.angle));
-            
-            // Create key background (rounded rectangle)
-            const keyBg = this.add.graphics();
-            keyBg.fillStyle(0x000000, 0.8); // Black background
-            keyBg.lineStyle(2, 0xFFFFFF, 1); // White border
-            keyBg.fillRoundedRect(-keySize/2, -keySize/2, keySize, keySize, 4);
-            keyBg.strokeRoundedRect(-keySize/2, -keySize/2, keySize, keySize, 4);
-            
-            // Create key text
-            const keyText = this.add.text(0, 0, dir.key, {
-                fontSize: '16px',
-                fill: '#ffffff',
-                fontFamily: 'Arial',
-                fontWeight: 'bold'
-            }).setOrigin(0.5);
+            // Rotate key icon to correct direction if needed
+            if (dir.angle !== 0) {
+                keyIcon.setRotation(Phaser.Math.DegToRad(dir.angle));
+            }
             
             // Create container for this direction's elements
             const directionContainer = this.add.container(dir.x, dir.y);
-            directionContainer.add([arrow, keyBg, keyText]);
-            
-            // Position key below/beside arrow based on direction
-            if (dir.direction === 'up') {
-                keyBg.setPosition(0, 35);
-                keyText.setPosition(0, 35);
-            } else if (dir.direction === 'down') {
-                keyBg.setPosition(0, -35);
-                keyText.setPosition(0, -35);
-            } else if (dir.direction === 'left') {
-                keyBg.setPosition(35, 0);
-                keyText.setPosition(35, 0);
-            } else if (dir.direction === 'right') {
-                keyBg.setPosition(-35, 0);
-                keyText.setPosition(-35, 0);
-            }
+            directionContainer.add([boundingBox, keyIcon]); // Box first (behind), then icon
             
             // Store references
             this.instructionArrows.push({
                 container: directionContainer,
-                arrow: arrow,
-                keyBg: keyBg,
-                keyText: keyText,
+                arrow: keyIcon, // Keep 'arrow' name for compatibility with animations
+                boundingBox: boundingBox,
                 direction: dir.direction
             });
             
@@ -107,27 +80,43 @@ class PacManScene extends Phaser.Scene {
                 ease: 'Power2'
             });
             
-            // Add pulsing animation to arrows
+            // Add pressing down animation to key icons
             this.instructionArrows.forEach(instruction => {
-                this.tweens.add({
-                    targets: instruction.arrow,
-                    scaleX: 1.2,
-                    scaleY: 1.2,
-                    duration: 1000,
-                    yoyo: true,
-                    repeat: -1,
-                    ease: 'Sine.easeInOut'
-                });
+                const originalScaleX = instruction.arrow.scaleX;
+                const originalScaleY = instruction.arrow.scaleY;
+                const originalY = instruction.arrow.y;
+                const pressDownDistance = 8; // Distance to move down within the box
                 
-                // Add glow effect to key
-                this.tweens.add({
-                    targets: instruction.keyBg,
-                    alpha: 0.6,
-                    duration: 800,
-                    yoyo: true,
-                    repeat: -1,
-                    ease: 'Sine.easeInOut'
-                });
+                // Create a pressing down animation sequence
+                const pressDown = () => {
+                    // Press down: scale down and move down within the bounding box
+                    this.tweens.add({
+                        targets: instruction.arrow,
+                        scaleX: originalScaleX * 0.85,
+                        scaleY: originalScaleY * 0.85,
+                        y: originalY + this.currentScale * pressDownDistance/2,
+                        duration: 150,
+                        ease: 'Power2',
+                        onComplete: () => {
+                            // Release: return to normal position within box
+                            this.tweens.add({
+                                targets: instruction.arrow,
+                                scaleX: originalScaleX,
+                                scaleY: originalScaleY,
+                                y: originalY,
+                                duration: 500,
+                                ease: 'Power2',
+                                onComplete: () => {
+                                    // Wait a bit before next press
+                                    this.time.delayedCall(250, pressDown, [], this);
+                                }
+                            });
+                        }
+                    });
+                };
+                
+                // Start the first press animation
+                pressDown();
             });
         }
     }
@@ -140,7 +129,6 @@ class PacManScene extends Phaser.Scene {
             // Stop all instruction animations
             this.instructionArrows.forEach(instruction => {
                 this.tweens.killTweensOf(instruction.arrow);
-                this.tweens.killTweensOf(instruction.keyBg);
             });
             
             // Fade out instructions
@@ -880,10 +868,167 @@ class PacManScene extends Phaser.Scene {
             fontStyle: 'italic'
         }).setOrigin(0.5);
         
+        // Create ESC button in top left corner
+        const escButtonPadding = 10;
+        const escButtonScale = this.currentScale * 0.065; // Same scale as instructional arrows
+        const escButtonX = -overlayWidth/2 + 3.0*escButtonPadding;
+        const escButtonY = -overlayHeight/2 + 2.5*escButtonPadding;
+        
+        // Calculate bounding box size for ESC button
+        const escBoxWidth = 38;
+        const escBoxHeight = 30;
+        const escBoxPadding = 5;
+        
+        // Create bounding box (background) for ESC button
+        const escBoundingBox = this.add.graphics();
+        escBoundingBox.fillStyle(0x000000, 0.8);
+        escBoundingBox.lineStyle(2, 0xFFFFFF, 1);
+        escBoundingBox.fillRoundedRect(-escBoxWidth/2, -escBoxHeight/2, escBoxWidth, escBoxHeight, 5);
+        escBoundingBox.strokeRoundedRect(-escBoxWidth/2, -escBoxHeight/2, escBoxWidth, escBoxHeight, 5);
+        escBoundingBox.setScale(this.currentScale*0.80);
+        
+        // ESC button icon
+        const escButtonIcon = this.add.image(0, -escBoxPadding, 'esc-key-logo'); // Start slightly above center
+        escButtonIcon.setScale(escButtonScale);
+        escButtonIcon.setAlpha(1.0);
+
+        // ESC button container
+        const escButtonContainer = this.add.container(escButtonX, escButtonY);
+        escButtonContainer.add([escBoundingBox, escButtonIcon]); // Box first (behind), then icon
+        escButtonContainer.setScrollFactor(0);
+        escButtonContainer.setDepth(1003);
+        
+        // Add pressing down animation to ESC button
+        const originalScaleX = escButtonIcon.scaleX;
+        const originalScaleY = escButtonIcon.scaleY;
+        const originalY = escButtonIcon.y;
+        const escPressDownDistance = 8; // Distance to move down within the box
+        
+        const pressDownEsc = () => {
+            // Press down: scale down and move down within the bounding box
+            this.tweens.add({
+                targets: escButtonIcon,
+                scaleX: originalScaleX * 0.85,
+                scaleY: originalScaleY * 0.85,
+                y: originalY + this.currentScale * escPressDownDistance/2,
+                duration: 150,
+                ease: 'Power2',
+                onComplete: () => {
+                    // Release: return to normal position within box
+                    this.tweens.add({
+                        targets: escButtonIcon,
+                        scaleX: originalScaleX,
+                        scaleY: originalScaleY,
+                        y: originalY,
+                        duration: 500,
+                        ease: 'Power2',
+                        onComplete: () => {
+                            // Wait a bit before next press
+                            this.time.delayedCall(250, pressDownEsc, [], this);
+                        }
+                    });
+                }
+            });
+        };
+        
+        // Start the first press animation
+        pressDownEsc();
+        
+        // Store bounding box reference for cleanup
+        this.escBoundingBox = escBoundingBox;
+        
+        // Create scroll indicator (only show first time if scrolling is needed)
+        let scrollIndicator = null;
+        if (needsScrolling && !this.hasShownScrollIndicator) {
+            this.hasShownScrollIndicator = true;
+            
+            // Create scroll indicator container at center of overlay
+            scrollIndicator = this.add.container(0, 0);
+            scrollIndicator.setScrollFactor(0);
+            scrollIndicator.setDepth(1003);
+            
+            // Create up and down arrows
+            const arrowSize = 15;
+            const arrowSpacing = 30;
+            
+            // Up arrow
+            const upArrow = this.add.graphics();
+            upArrow.lineStyle(2, 0x00FFFF, 1);
+            upArrow.beginPath();
+            upArrow.moveTo(0, arrowSize/2);
+            upArrow.lineTo(-arrowSize/2, -arrowSize/2);
+            upArrow.lineTo(arrowSize/2, -arrowSize/2);
+            upArrow.closePath();
+            upArrow.strokePath();
+            upArrow.fillStyle(0x00FFFF, 0.5);
+            upArrow.fillPath();
+            
+            // Down arrow
+            const downArrow = this.add.graphics();
+            downArrow.lineStyle(2, 0x00FFFF, 1);
+            downArrow.beginPath();
+            downArrow.moveTo(0, -arrowSize/2);
+            downArrow.lineTo(-arrowSize/2, arrowSize/2);
+            downArrow.lineTo(arrowSize/2, arrowSize/2);
+            downArrow.closePath();
+            downArrow.strokePath();
+            downArrow.fillStyle(0x00FFFF, 0.5);
+            downArrow.fillPath();
+            
+            // Position arrows
+            upArrow.setPosition(0, -arrowSpacing/2);
+            downArrow.setPosition(0, arrowSpacing/2);
+            
+            // Add pulsing animation to arrows
+            this.tweens.add({
+                targets: [upArrow, downArrow],
+                alpha: { from: 0.3, to: 1 },
+                duration: 800,
+                yoyo: true,
+                repeat: -1,
+                ease: 'Sine.easeInOut'
+            });
+            
+            // Add vertical movement animation
+            this.tweens.add({
+                targets: scrollIndicator,
+                y: 5,
+                duration: 1000,
+                yoyo: true,
+                repeat: -1,
+                ease: 'Sine.easeInOut'
+            });
+            
+            scrollIndicator.add([upArrow, downArrow]);
+            
+            // Auto-hide scroll indicator after 3 seconds
+            this.time.delayedCall(3000, () => {
+                if (scrollIndicator && scrollIndicator.active) {
+                    this.tweens.add({
+                        targets: scrollIndicator,
+                        alpha: 0,
+                        duration: 500,
+                        ease: 'Power2',
+                        onComplete: () => {
+                            if (scrollIndicator && scrollIndicator.active) {
+                                scrollIndicator.setVisible(false);
+                            }
+                        }
+                    });
+                }
+            }, [], this);
+        }
+        
         // Add all elements to overlayContainer
-        const elementsToAdd = [overlayWindow, this.nonScrollableContent, this.scrollableContent, closeText];
+        const elementsToAdd = [overlayWindow, this.nonScrollableContent, this.scrollableContent, closeText, escButtonContainer];
         if (scrollInstructions) elementsToAdd.push(scrollInstructions);
+        if (scrollIndicator) elementsToAdd.push(scrollIndicator);
         this.overlayContainer.add(elementsToAdd);
+        
+        // Store references for cleanup
+        this.escButtonContainer = escButtonContainer;
+        this.escButtonIcon = escButtonIcon;
+        this.scrollIndicator = scrollIndicator;
 
         const debug = 0;
         if (debug > 0) {
@@ -1009,6 +1154,22 @@ class PacManScene extends Phaser.Scene {
             this.scrollableContent.destroy();
             this.scrollableContent = null;
         }
+        
+        // Clean up ESC button and scroll indicator
+        if (this.escButtonContainer) {
+            this.tweens.killTweensOf(this.escButtonContainer);
+            // Also kill tweens on the icon if it exists
+            if (this.escButtonIcon) {
+                this.tweens.killTweensOf(this.escButtonIcon);
+            }
+            this.escButtonContainer = null;
+            this.escButtonIcon = null;
+        }
+        
+        if (this.scrollIndicator) {
+            this.tweens.killTweensOf(this.scrollIndicator);
+            this.scrollIndicator = null;
+        }
     }
 
     // Handle content scrolling
@@ -1018,6 +1179,22 @@ class PacManScene extends Phaser.Scene {
 
         this.scrollableContent.setY(-this.scrollY);
         // this.scrollableContent.setY(this.scrollY + (overlayHeight / 2 + 20));
+        
+        // Hide scroll indicator when user starts scrolling
+        if (this.scrollIndicator && this.scrollIndicator.visible) {
+            this.tweens.killTweensOf(this.scrollIndicator);
+            this.tweens.add({
+                targets: this.scrollIndicator,
+                alpha: 0,
+                duration: 300,
+                ease: 'Power2',
+                onComplete: () => {
+                    if (this.scrollIndicator && this.scrollIndicator.active) {
+                        this.scrollIndicator.setVisible(false);
+                    }
+                }
+            });
+        }
     }
 
     // Close overlay when ESC is pressed
@@ -1652,6 +1829,14 @@ class PacManScene extends Phaser.Scene {
         this.load.image('ucr-logo', 'assets/ucr-neon-logo.png');
         this.load.image('serc-logo', 'assets/serc-neon-logo.png');
         this.load.image('smartbridge-logo', 'assets/smartbridge-neon-logo.png');
+        // this.load.image('linkedin-logo', 'assets/linkedin-neon-logo.png');
+        // this.load.image('github-logo', 'assets/github-neon-logo.png');
+        this.load.image('w-key-logo', 'assets/keyboard-w-key-logo.png')
+        this.load.image('s-key-logo', 'assets/keyboard-s-key-logo.png')
+        this.load.image('a-key-logo', 'assets/keyboard-a-key-logo.png')
+        this.load.image('d-key-logo', 'assets/keyboard-d-key-logo.png')
+        this.load.image('esc-key-logo', 'assets/keyboard-esc-key-logo.png')
+        this.load.image('enter-key-logo', 'assets/keyboard-enter-key-logo.png')
     }
 
     create() {
@@ -1663,6 +1848,7 @@ class PacManScene extends Phaser.Scene {
         this.animationsStarted = false; // Flag to prevent multiple animation starts
         this.fontLoaded = false;
         this.overlayOpen = false; // Track overlay state
+        this.hasShownScrollIndicator = false; // Track if scroll indicator has been shown
         // this.canInteract = true; // Track if orb can be interacted with (to deal with race condition)
 
         // Create section data
@@ -1736,7 +1922,6 @@ class PacManScene extends Phaser.Scene {
         if (this.instructionArrows) {
             this.instructionArrows.forEach(instruction => {
                 this.tweens.killTweensOf(instruction.arrow);
-                this.tweens.killTweensOf(instruction.keyBg);
             });
         }
 
