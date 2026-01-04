@@ -845,28 +845,15 @@ class PacManScene extends Phaser.Scene {
         this.maxScrollY = needsScrolling ? Math.max(0, totalContentHeight - availableHeight) : 0;
         console.log('maxScrollY', this.maxScrollY);
         
-        // Add scroll instructions if needed
-        let scrollInstructions = null;
-        // if (needsScrolling) {
-        //     scrollInstructions = this.add.text(0, overlayHeight/2 - 25, 'Use Mouse Wheel to scroll', {
-        //         fontSize: `${Math.floor(8 * textScale)}px`,
-        //         // fill: '#888888',
-        //         fill: '#FFFFFF',
-        //         // fontFamily: this.fontLoaded ? 'Pixelify Sans' : 'Arial',
-        //         fontFamily: 'Monaco',
-        //         fontStyle: 'italic'
-        //     }).setOrigin(0.5);
-        // }
-        
-        // Add close instruction
-        const closeText = this.add.text(0, overlayHeight/2 - 15, 'Use Mouse Wheel to scroll | Press ESC to close', {
-            fontSize: `${Math.floor(8 * textScale)}px`,
-            // fill: '#888888',
-            fill: '#FFFFFF',
-            // fontFamily: this.fontLoaded ? 'Pixelify Sans' : 'Arial',
-            fontFamily: 'Monaco',
-            fontStyle: 'italic'
-        }).setOrigin(0.5);
+        // // Add close instruction
+        // const closeText = this.add.text(0, overlayHeight/2 - 15, 'Use Mouse Wheel to scroll | Press ESC to close', {
+        //     fontSize: `${Math.floor(8 * textScale)}px`,
+        //     // fill: '#888888',
+        //     fill: '#FFFFFF',
+        //     // fontFamily: this.fontLoaded ? 'Pixelify Sans' : 'Arial',
+        //     fontFamily: 'Monaco',
+        //     fontStyle: 'italic'
+        // }).setOrigin(0.5);
         
         // Create ESC button in top left corner
         const escButtonPadding = 10;
@@ -937,47 +924,45 @@ class PacManScene extends Phaser.Scene {
         // Store bounding box reference for cleanup
         this.escBoundingBox = escBoundingBox;
         
-        // Create scroll indicator (only show first time if scrolling is needed)
+        // Create scroll indicator
         let scrollIndicator = null;
-        if (needsScrolling && !this.hasShownScrollIndicator) {
-            this.hasShownScrollIndicator = true;
-            
+        if (needsScrolling) {
             // Create scroll indicator container at center of overlay
             scrollIndicator = this.add.container(0, 0);
+            scrollIndicator.setPosition(0, 0);
             scrollIndicator.setScrollFactor(0);
             scrollIndicator.setDepth(1003);
             
             // Create up and down arrows
             const arrowSize = 15;
-            const arrowSpacing = 30;
             
-            // Up arrow
+            // Up arrow (initially hidden)
             const upArrow = this.add.graphics();
             upArrow.lineStyle(2, 0x00FFFF, 1);
             upArrow.beginPath();
-            upArrow.moveTo(0, arrowSize/2);
-            upArrow.lineTo(-arrowSize/2, -arrowSize/2);
-            upArrow.lineTo(arrowSize/2, -arrowSize/2);
+            upArrow.moveTo(0, -arrowSize/2);
+            upArrow.lineTo(-arrowSize/2, arrowSize/2);
+            upArrow.lineTo(arrowSize/2, arrowSize/2);
             upArrow.closePath();
             upArrow.strokePath();
             upArrow.fillStyle(0x00FFFF, 0.5);
             upArrow.fillPath();
-            
-            // Down arrow
+            upArrow.setPosition(0, -overlayHeight/2 + 20); // Position at top
+            upArrow.setAlpha(0); // Initially hidden
+            upArrow.setVisible(false);
+
+            // Down arrow (initially visible)
             const downArrow = this.add.graphics();
             downArrow.lineStyle(2, 0x00FFFF, 1);
             downArrow.beginPath();
-            downArrow.moveTo(0, -arrowSize/2);
-            downArrow.lineTo(-arrowSize/2, arrowSize/2);
-            downArrow.lineTo(arrowSize/2, arrowSize/2);
+            downArrow.moveTo(0, arrowSize/2);
+            downArrow.lineTo(-arrowSize/2, -arrowSize/2);
+            downArrow.lineTo(arrowSize/2, -arrowSize/2);
             downArrow.closePath();
             downArrow.strokePath();
             downArrow.fillStyle(0x00FFFF, 0.5);
             downArrow.fillPath();
-            
-            // Position arrows
-            upArrow.setPosition(0, -arrowSpacing/2);
-            downArrow.setPosition(0, arrowSpacing/2);
+            downArrow.setPosition(0, overlayHeight/2 - 15);
             
             // Add pulsing animation to arrows
             this.tweens.add({
@@ -992,7 +977,7 @@ class PacManScene extends Phaser.Scene {
             // Add vertical movement animation
             this.tweens.add({
                 targets: scrollIndicator,
-                y: 5,
+                y: 3,
                 duration: 1000,
                 yoyo: true,
                 repeat: -1,
@@ -1001,9 +986,14 @@ class PacManScene extends Phaser.Scene {
             
             scrollIndicator.add([upArrow, downArrow]);
             
-            // Auto-hide scroll indicator after 3 seconds
-            this.time.delayedCall(3000, () => {
-                if (scrollIndicator && scrollIndicator.active) {
+            // Store arrow references for dynamic control
+            this.scrollUpArrow = upArrow;
+            this.scrollDownArrow = downArrow;
+            this.hasUserScrolled = false; // Track if user has scrolled
+            
+            // Auto-hide scroll indicator after 3 seconds only if user hasn't scrolled
+            this.scrollIndicatorAutoHideTimer = this.time.delayedCall(3000, () => {
+                if (scrollIndicator && scrollIndicator.active && !this.hasUserScrolled) {
                     this.tweens.add({
                         targets: scrollIndicator,
                         alpha: 0,
@@ -1020,8 +1010,7 @@ class PacManScene extends Phaser.Scene {
         }
         
         // Add all elements to overlayContainer
-        const elementsToAdd = [overlayWindow, this.nonScrollableContent, this.scrollableContent, closeText, escButtonContainer];
-        if (scrollInstructions) elementsToAdd.push(scrollInstructions);
+        const elementsToAdd = [overlayWindow, this.nonScrollableContent, this.scrollableContent, escButtonContainer];
         if (scrollIndicator) elementsToAdd.push(scrollIndicator);
         this.overlayContainer.add(elementsToAdd);
         
@@ -1088,10 +1077,51 @@ class PacManScene extends Phaser.Scene {
 
         // Setup scroll controls if needed
         if (needsScrolling) {
-            // Mouse-only scroll: prevent default page scroll while overlay open
+            // Mouse scroll: prevent default page scroll while overlay open
             this.input.on('wheel', (pointer, gameObjects, deltaX, deltaY) => {
                 if (this.overlayOpen) {
                     this.scrollContent(deltaY, overlayHeight);
+                }
+            });
+            
+            // Keyboard scroll support: W/S and Up/Down arrow keys
+            const wasdKeys = this.input.keyboard.addKeys('W,S');
+            const arrowUp = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.UP);
+            const arrowDown = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.DOWN);
+            
+            // Store references for cleanup
+            this.overlayScrollKeys = {
+                W: wasdKeys.W,
+                S: wasdKeys.S,
+                UP: arrowUp,
+                DOWN: arrowDown
+            };
+            
+            // W key - scroll up
+            wasdKeys.W.on('down', () => {
+                if (this.overlayOpen) {
+                    this.scrollContent(-15, overlayHeight);
+                }
+            });
+            
+            // S key - scroll down
+            wasdKeys.S.on('down', () => {
+                if (this.overlayOpen) {
+                    this.scrollContent(15, overlayHeight);
+                }
+            });
+            
+            // Up arrow key - scroll up
+            arrowUp.on('down', () => {
+                if (this.overlayOpen) {
+                    this.scrollContent(-15, overlayHeight);
+                }
+            });
+            
+            // Down arrow key - scroll down
+            arrowDown.on('down', () => {
+                if (this.overlayOpen) {
+                    this.scrollContent(15, overlayHeight);
                 }
             });
         }
@@ -1168,7 +1198,21 @@ class PacManScene extends Phaser.Scene {
         
         if (this.scrollIndicator) {
             this.tweens.killTweensOf(this.scrollIndicator);
+            if (this.scrollUpArrow) {
+                this.tweens.killTweensOf(this.scrollUpArrow);
+            }
+            if (this.scrollDownArrow) {
+                this.tweens.killTweensOf(this.scrollDownArrow);
+            }
+            // Clean up auto-hide timer
+            if (this.scrollIndicatorAutoHideTimer) {
+                this.scrollIndicatorAutoHideTimer.remove();
+                this.scrollIndicatorAutoHideTimer = null;
+            }
             this.scrollIndicator = null;
+            this.scrollUpArrow = null;
+            this.scrollDownArrow = null;
+            this.hasUserScrolled = false;
         }
     }
 
@@ -1178,22 +1222,78 @@ class PacManScene extends Phaser.Scene {
         this.scrollY = Phaser.Math.Clamp(this.scrollY + deltaY, 0, this.maxScrollY);
 
         this.scrollableContent.setY(-this.scrollY);
-        // this.scrollableContent.setY(this.scrollY + (overlayHeight / 2 + 20));
         
-        // Hide scroll indicator when user starts scrolling
-        if (this.scrollIndicator && this.scrollIndicator.visible) {
-            this.tweens.killTweensOf(this.scrollIndicator);
-            this.tweens.add({
-                targets: this.scrollIndicator,
-                alpha: 0,
-                duration: 300,
-                ease: 'Power2',
-                onComplete: () => {
-                    if (this.scrollIndicator && this.scrollIndicator.active) {
-                        this.scrollIndicator.setVisible(false);
-                    }
+        // Mark that user has scrolled (cancel auto-hide)
+        if (!this.hasUserScrolled) {
+            this.hasUserScrolled = true;
+            // Cancel auto-hide timer if it exists
+            if (this.scrollIndicatorAutoHideTimer) {
+                this.scrollIndicatorAutoHideTimer.remove();
+                this.scrollIndicatorAutoHideTimer = null;
+            }
+            // Make sure indicator is visible
+            if (this.scrollIndicator && !this.scrollIndicator.visible) {
+                this.scrollIndicator.setVisible(true);
+                this.scrollIndicator.setAlpha(1);
+            }
+        }
+        
+        // Update scroll indicator arrows based on scroll position
+        // Show arrows when scrolling in that direction is still possible
+        if (this.scrollIndicator && this.scrollIndicator.visible && this.scrollUpArrow && this.scrollDownArrow) {
+            const scrollThreshold = 5; // Small threshold to avoid flickering at edges
+            const canScrollUp = this.scrollY > scrollThreshold;
+            const canScrollDown = this.scrollY < this.maxScrollY - scrollThreshold;
+            
+            // Show/hide up arrow based on whether scrolling up is possible
+            if (canScrollUp) {
+                if (!this.scrollUpArrow.visible) {
+                    this.scrollUpArrow.setVisible(true);
+                    this.tweens.add({
+                        targets: this.scrollUpArrow,
+                        alpha: 1,
+                        duration: 200,
+                        ease: 'Power2'
+                    });
                 }
-            });
+            } else {
+                if (this.scrollUpArrow.visible) {
+                    this.tweens.add({
+                        targets: this.scrollUpArrow,
+                        alpha: 0,
+                        duration: 200,
+                        ease: 'Power2',
+                        onComplete: () => {
+                            this.scrollUpArrow.setVisible(false);
+                        }
+                    });
+                }
+            }
+            
+            // Show/hide down arrow based on whether scrolling down is possible
+            if (canScrollDown) {
+                if (!this.scrollDownArrow.visible) {
+                    this.scrollDownArrow.setVisible(true);
+                    this.tweens.add({
+                        targets: this.scrollDownArrow,
+                        alpha: 1,
+                        duration: 200,
+                        ease: 'Power2'
+                    });
+                }
+            } else {
+                if (this.scrollDownArrow.visible) {
+                    this.tweens.add({
+                        targets: this.scrollDownArrow,
+                        alpha: 0,
+                        duration: 200,
+                        ease: 'Power2',
+                        onComplete: () => {
+                            this.scrollDownArrow.setVisible(false);
+                        }
+                    });
+                }
+            }
         }
     }
 
@@ -1210,6 +1310,15 @@ class PacManScene extends Phaser.Scene {
 
         // Remove wheel event listener
         this.input.off('wheel');
+        
+        // Remove keyboard scroll listeners
+        if (this.overlayScrollKeys) {
+            this.overlayScrollKeys.W.off('down');
+            this.overlayScrollKeys.S.off('down');
+            this.overlayScrollKeys.UP.off('down');
+            this.overlayScrollKeys.DOWN.off('down');
+            this.overlayScrollKeys = null;
+        }
         
         // Immediate cleanup - don't wait for animation
         this.cleanupOverlayElements();
@@ -1848,7 +1957,6 @@ class PacManScene extends Phaser.Scene {
         this.animationsStarted = false; // Flag to prevent multiple animation starts
         this.fontLoaded = false;
         this.overlayOpen = false; // Track overlay state
-        this.hasShownScrollIndicator = false; // Track if scroll indicator has been shown
         // this.canInteract = true; // Track if orb can be interacted with (to deal with race condition)
 
         // Create section data
