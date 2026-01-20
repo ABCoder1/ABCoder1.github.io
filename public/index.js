@@ -343,16 +343,36 @@ class PacManScene extends Phaser.Scene {
             ],
             'About Me': [
                 {
-                    logo: 'forcepoint-logo',
-                    title: 'Passionate Developer',
-                    company: 'Personal Info',
-                    period: 'Always Learning',
-                    description: 'Dedicated software engineer with a passion for creating innovative solutions and learning new technologies.',
-                    technologies: ['Problem Solving', 'Team Leadership', 'Innovation'],
+                    logo: 'github-logo',
+                    title: 'Open Source Contributor',
+                    company: '---',
+                    period: '2024', 
+                    description: 'Contributed to open source projects on GitHub, improving the functionality and usability of various software projects.',
+                    technologies: ['GitHub', 'JavaScript', 'Python', 'TypeScript', 'React', 'Node.js', 'Express.js', 'Socket.io', 'MongoDB', 'MariaDB', 'Amazon RDS'],
                     achievements: [
-                        'Quick learner',
-                        'Team player',
-                        'Innovation focused'
+                        'Contributed to open source projects on GitHub, improving the functionality and usability of various software projects.',
+                    ]
+                },
+                {
+                    logo: 'linkedin-logo',
+                    title: 'LinkedIn Contributor',
+                    company: '---',
+                    period: '2024', 
+                    description: 'Contributed to open source projects on LinkedIn, improving the functionality and usability of various software projects.',
+                    technologies: ['LinkedIn', 'JavaScript', 'Python', 'TypeScript', 'React', 'Node.js', 'Express.js', 'Socket.io', 'MongoDB', 'MariaDB', 'Amazon RDS'],
+                    achievements: [
+                        'Contributed to open source projects on LinkedIn, improving the functionality and usability of various software projects.',
+                    ]
+                },
+                {
+                    logo: 'resume-logo',
+                    title: 'Resume',
+                    company: '---',
+                    period: '2024', 
+                    description: 'Resume',
+                    technologies: ['Resume', 'JavaScript', 'Python', 'TypeScript', 'React', 'Node.js', 'Express.js', 'Socket.io', 'MongoDB', 'MariaDB', 'Amazon RDS'],
+                    achievements: [
+                        'Resume',
                     ]
                 }
             ]
@@ -680,6 +700,8 @@ class PacManScene extends Phaser.Scene {
         // Keep your current overlay size
         const overlayWidth = Math.min(camera.width * 0.6, 350);
         const overlayHeight = Math.min(camera.height * 0.35, 250);
+        // Store overlay height for continuous keyboard scrolling
+        this.currentOverlayHeight = overlayHeight;
 
         // Create overlay container at SCREEN CENTER
         this.overlayContainer = this.add.container(camera.width / 2, camera.height / 2);
@@ -862,7 +884,7 @@ class PacManScene extends Phaser.Scene {
         const escButtonY = -overlayHeight/2 + 2.5*escButtonPadding;
         
         // Calculate bounding box size for ESC button
-        const escBoxWidth = 38;
+        const escBoxWidth = 37;
         const escBoxHeight = 30;
         const escBoxPadding = 5;
         
@@ -947,7 +969,7 @@ class PacManScene extends Phaser.Scene {
             upArrow.strokePath();
             upArrow.fillStyle(0x00FFFF, 0.5);
             upArrow.fillPath();
-            upArrow.setPosition(0, -overlayHeight/2 + 20); // Position at top
+            upArrow.setPosition(0, -overlayHeight/2 + 125); // Position at top
             upArrow.setAlpha(0); // Initially hidden
             upArrow.setVisible(false);
 
@@ -1214,6 +1236,9 @@ class PacManScene extends Phaser.Scene {
             this.scrollDownArrow = null;
             this.hasUserScrolled = false;
         }
+
+        // Reset cached overlay height
+        this.currentOverlayHeight = null;
     }
 
     // Handle content scrolling
@@ -1294,6 +1319,30 @@ class PacManScene extends Phaser.Scene {
                     });
                 }
             }
+        }
+    }
+
+    // Continuous keyboard-based scrolling for the overlay
+    updateOverlayScrollInput() {
+        // Only process when overlay is open and scroll keys are registered
+        if (!this.overlayOpen || !this.overlayScrollKeys || !this.currentOverlayHeight) return;
+
+        const scrollStep = 10;
+        let deltaY = 0;
+
+        // Scroll up with W or Up Arrow
+        if (this.overlayScrollKeys.W.isDown || this.overlayScrollKeys.UP.isDown) {
+            deltaY -= scrollStep;
+        }
+
+        // Scroll down with S or Down Arrow
+        if (this.overlayScrollKeys.S.isDown || this.overlayScrollKeys.DOWN.isDown) {
+            deltaY += scrollStep;
+        }
+
+        // Apply scrolling if any key is held
+        if (deltaY !== 0) {
+            this.scrollContent(deltaY, this.currentOverlayHeight);
         }
     }
 
@@ -1938,8 +1987,10 @@ class PacManScene extends Phaser.Scene {
         this.load.image('ucr-logo', 'assets/ucr-neon-logo.png');
         this.load.image('serc-logo', 'assets/serc-neon-logo.png');
         this.load.image('smartbridge-logo', 'assets/smartbridge-neon-logo.png');
-        // this.load.image('linkedin-logo', 'assets/linkedin-neon-logo.png');
-        // this.load.image('github-logo', 'assets/github-neon-logo.png');
+        this.load.image('github-logo', 'assets/github-neon-logo.png');
+        this.load.image('linkedin-logo', 'assets/linkedin-neon-logo.png');
+        this.load.image('education-logo', 'assets/education-neon-logo.png');
+        this.load.image('resume-logo', 'assets/resume-neon-logo.png');
         this.load.image('w-key-logo', 'assets/keyboard-w-key-logo.png')
         this.load.image('s-key-logo', 'assets/keyboard-s-key-logo.png')
         this.load.image('a-key-logo', 'assets/keyboard-a-key-logo.png')
@@ -2010,6 +2061,11 @@ class PacManScene extends Phaser.Scene {
             this.updateSectionIconsProximity();
             this.updateCamera();
             this.updateInstructions();
+
+            // Handle continuous overlay scrolling via keyboard while overlay is open
+            if (this.overlayOpen) {
+                this.updateOverlayScrollInput();
+            }
         }
     }
 
