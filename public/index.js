@@ -4,82 +4,55 @@ class PacManScene extends Phaser.Scene {
         this.instructionContainer = this.add.container(0, 0);
         
         // Arrow properties
-        const arrowDistance = 80; // Distance from Pacman center
-        const arrowSize = 32;
-        const keySize = 24;
+        const arrowDistance = this.currentScale * 80; // Distance from Pacman center
+        const keyScale = this.currentScale * 0.065; // Scale for key icons
         
         // Create arrows and keys for each direction
         const directions = [
-            { key: 'W', angle: 0, x: 0, y: -arrowDistance, direction: 'up' },
-            { key: 'S', angle: 180, x: 0, y: arrowDistance, direction: 'down' },
-            { key: 'A', angle: -90, x: -arrowDistance, y: 0, direction: 'left' },
-            { key: 'D', angle: 90, x: arrowDistance, y: 0, direction: 'right' }
+            { icon: 'w-key-logo', angle: 0, x: 0, y: -arrowDistance/2, direction: 'up' },
+            { icon: 's-key-logo', angle: 0, x: 0, y: arrowDistance/2, direction: 'down' },
+            { icon: 'a-key-logo', angle: 0, x: -arrowDistance/2, y: 0, direction: 'left' },
+            { icon: 'd-key-logo', angle: 0, x: arrowDistance/2, y: 0, direction: 'right' }
         ];
         
         this.instructionArrows = [];
         
         directions.forEach(dir => {
-            // Create arrow graphics
-            const arrow = this.add.graphics();
-            arrow.fillStyle(0xFFD700, 0.8); // Gold color with transparency
-            arrow.lineStyle(2, 0xFFFFFF, 1); // White outline
+            // Calculate bounding box size based on key icon dimensions
+            // We'll use a fixed size that accommodates the key icon
+            const boxWidth = 50;
+            const boxHeight = 50;
+            const boxPadding = 5;
             
-            // Draw arrow shape
-            arrow.beginPath();
-            arrow.moveTo(0, -15);     // Top point
-            arrow.lineTo(-10, 5);     // Bottom left
-            arrow.lineTo(-5, 5);      // Inner left
-            arrow.lineTo(-5, 15);     // Bottom left inner
-            arrow.lineTo(5, 15);      // Bottom right inner
-            arrow.lineTo(5, 5);       // Inner right
-            arrow.lineTo(10, 5);      // Bottom right
-            arrow.closePath();
-            arrow.fillPath();
-            arrow.strokePath();
+            // Create bounding box (background)
+            const boundingBox = this.add.graphics();
+            // fill the bounding box with black color
+            boundingBox.fillStyle(0x000000, 0.8);
+            // make the line color to be white
+            boundingBox.lineStyle(2, 0xFFFFFF, 1);
+            boundingBox.fillRoundedRect(-boxWidth/2, -boxHeight/2, boxWidth, boxHeight, 5);
+            boundingBox.strokeRoundedRect(-boxWidth/2, -boxHeight/2, boxWidth, boxHeight, 5);
+            boundingBox.setScale(this.currentScale*0.80);
+
+            // Create key icon image
+            const keyIcon = this.add.image(0, -boxPadding, dir.icon); // Start slightly above center
+            keyIcon.setScale(this.currentScale * 0.065);
+            keyIcon.setAlpha(1.0);
             
-            // Rotate arrow to correct direction
-            arrow.setRotation(Phaser.Math.DegToRad(dir.angle));
-            
-            // Create key background (rounded rectangle)
-            const keyBg = this.add.graphics();
-            keyBg.fillStyle(0x000000, 0.8); // Black background
-            keyBg.lineStyle(2, 0xFFFFFF, 1); // White border
-            keyBg.fillRoundedRect(-keySize/2, -keySize/2, keySize, keySize, 4);
-            keyBg.strokeRoundedRect(-keySize/2, -keySize/2, keySize, keySize, 4);
-            
-            // Create key text
-            const keyText = this.add.text(0, 0, dir.key, {
-                fontSize: '16px',
-                fill: '#ffffff',
-                fontFamily: 'Arial',
-                fontWeight: 'bold'
-            }).setOrigin(0.5);
+            // Rotate key icon to correct direction if needed
+            if (dir.angle !== 0) {
+                keyIcon.setRotation(Phaser.Math.DegToRad(dir.angle));
+            }
             
             // Create container for this direction's elements
             const directionContainer = this.add.container(dir.x, dir.y);
-            directionContainer.add([arrow, keyBg, keyText]);
-            
-            // Position key below/beside arrow based on direction
-            if (dir.direction === 'up') {
-                keyBg.setPosition(0, 35);
-                keyText.setPosition(0, 35);
-            } else if (dir.direction === 'down') {
-                keyBg.setPosition(0, -35);
-                keyText.setPosition(0, -35);
-            } else if (dir.direction === 'left') {
-                keyBg.setPosition(35, 0);
-                keyText.setPosition(35, 0);
-            } else if (dir.direction === 'right') {
-                keyBg.setPosition(-35, 0);
-                keyText.setPosition(-35, 0);
-            }
+            directionContainer.add([boundingBox, keyIcon]); // Box first (behind), then icon
             
             // Store references
             this.instructionArrows.push({
                 container: directionContainer,
-                arrow: arrow,
-                keyBg: keyBg,
-                keyText: keyText,
+                arrow: keyIcon, // Keep 'arrow' name for compatibility with animations
+                boundingBox: boundingBox,
                 direction: dir.direction
             });
             
@@ -107,27 +80,43 @@ class PacManScene extends Phaser.Scene {
                 ease: 'Power2'
             });
             
-            // Add pulsing animation to arrows
+            // Add pressing down animation to key icons
             this.instructionArrows.forEach(instruction => {
-                this.tweens.add({
-                    targets: instruction.arrow,
-                    scaleX: 1.2,
-                    scaleY: 1.2,
-                    duration: 1000,
-                    yoyo: true,
-                    repeat: -1,
-                    ease: 'Sine.easeInOut'
-                });
+                const originalScaleX = instruction.arrow.scaleX;
+                const originalScaleY = instruction.arrow.scaleY;
+                const originalY = instruction.arrow.y;
+                const pressDownDistance = 8; // Distance to move down within the box
                 
-                // Add glow effect to key
-                this.tweens.add({
-                    targets: instruction.keyBg,
-                    alpha: 0.6,
-                    duration: 800,
-                    yoyo: true,
-                    repeat: -1,
-                    ease: 'Sine.easeInOut'
-                });
+                // Create a pressing down animation sequence
+                const pressDown = () => {
+                    // Press down: scale down and move down within the bounding box
+                    this.tweens.add({
+                        targets: instruction.arrow,
+                        scaleX: originalScaleX * 0.85,
+                        scaleY: originalScaleY * 0.85,
+                        y: originalY + this.currentScale * pressDownDistance/2,
+                        duration: 150,
+                        ease: 'Power2',
+                        onComplete: () => {
+                            // Release: return to normal position within box
+                            this.tweens.add({
+                                targets: instruction.arrow,
+                                scaleX: originalScaleX,
+                                scaleY: originalScaleY,
+                                y: originalY,
+                                duration: 500,
+                                ease: 'Power2',
+                                onComplete: () => {
+                                    // Wait a bit before next press
+                                    this.time.delayedCall(250, pressDown, [], this);
+                                }
+                            });
+                        }
+                    });
+                };
+                
+                // Start the first press animation
+                pressDown();
             });
         }
     }
@@ -140,7 +129,6 @@ class PacManScene extends Phaser.Scene {
             // Stop all instruction animations
             this.instructionArrows.forEach(instruction => {
                 this.tweens.killTweensOf(instruction.arrow);
-                this.tweens.killTweensOf(instruction.keyBg);
             });
             
             // Fade out instructions
@@ -317,55 +305,104 @@ class PacManScene extends Phaser.Scene {
                     description: 'Built and optimized ML pipelines on HPCC Linux servers for large-scale genomic data, leveraging Bash scripting and CUDA libraries to accelerate training and inference of foundational models.',
                     technologies: ['Pytorch', 'TensorFlow', 'HuggingFace', 'WandB', 'LangChain'],
                     achievements: [
-                        'Developed an ML framework to process high-throughput scRNA data, expediting viral-host interaction analysis by 40%.',
-                        'Built & Deployed digital tools for lineage tracing and trajectory inference using cutting-edge single-cell RNA-Seq data.',
-                        'Provided computational insights to wet-lab scientists, speeding up iterative model fine-tuning & feedback loops by 20%.'
+                        'Designed & Developed Transformer & VAE based ML models for scRNA-Seq data to model viral-host interactions.',
+                        'Leveraged Contrastive Learning to extract latent biological features, boosting cellular differentiation prediction rate.',
+                        'Integrated MLOps and workflow orchestration with Databricks, Prometheus, and W&B to streamline ML pipelines.'
                     ]
                 }
             ],
             'Projects': [
                 {
-                    logo: 'forcepoint-logo',
-                    title: 'AI-Powered Portfolio',
-                    company: 'Personal Project',
-                    period: '2024',
-                    description: 'Interactive portfolio website built with Phaser.js featuring AI-driven animations and game mechanics.',
-                    technologies: ['Phaser.js', 'JavaScript', 'WebGL', 'CSS3'],
+                    logo: 'mentorAI-logo',
+                    title: 'MentorAI',
+                    description: 'An AI-powered, multilingual learning platform that uses LLMs, RAGs, Agents and Voice Interactions for generating adaptive lessons & quizzes, and tracks students progress in real-time with teacher dashboards & AI tutors.',
+                    technologies: ['Supabase', 'Groq', 'Anthropic Claude', 'Fetch.ai Agentverse', 'Google TTS', 'Python', 'FastAPI', 'React', 'Next.js', 'Tailwind CSS', 'TypeScript', 'Docker', 'Kubernetes', 'PostgreSQL', 'MySQL', 'MongoDB', 'SQLite'],
                     achievements: [
-                        'Unique gaming interface',
-                        'Responsive design',
-                        'Interactive animations'
-                    ]
+                        'Built an LLM-based RAG agent that generates adaptive coursework and quizzes from trusted curricula, tracks learning gaps in agent state, personalizes revisions, and alerts teachers when core concepts need intervention.',
+                        'Developed multilingual voice and text interfaces with speech-to-text and text-to-speech pipelines, making learning more accessible for students from diverse and underserved backgrounds.',
+                        'Designed adaptive feedback and progress-tracking workflows that continuously refine learning paths in real time, helping learners stay engaged and measure improvement clearly.',
+                    ],
+                    url: 'https://github.com/ABCoder1/mentorAI'
+                },
+                {
+                    logo: 'sensAI-search-logo',
+                    title: 'SensAI Search',
+                    description: 'A bi-directional multimodal search engine leveraging embedding fine-tuning, OOD (Out Of Distribution) detection, and image segmentation for localized, context-aware queries like "images where I\'m wearing a red hat."',
+                    technologies: ['Python', 'FastAPI', 'React', 'Redis', 'S3', 'Docker', 'Kubernetes', 'WandB,', 'HuggingFace,'],
+                    achievements: [
+                        'Engineered a bi-directional multimodal search engine, optimizing a CLIP backbone with contrastive learning, foreground segmentation via SAM, object-level embeddings, and prompt refinement to boost retrieval accuracy and relevance.',
+                        'Integrated OOD detection to evaluate result confidence and deployed a diffusion model to generate images when queries were valid but missing in the database.',
+                        'Built a FastAPI web application with Redis caching and S3-backed storage for user-generated images, and implemented an FSSAI index for high-speed similarity search and efficient image retrieval.',
+                    ],
+                    url: 'https://github.com/AB-at-UCR/SensAISearch'
+
+                },
+                {
+                    logo: 'zk-charity-logo',
+                    title: 'ZK Charity',
+                    description: 'A decentralized charity platform leveraging ZK proofs for transparent, verifiable donations and impact tracking.',
+                    technologies: ['Python', 'Midnight Blockchain', 'Smart Contracts', 'React', 'Compact Compiler', 'Docker', 'Kubernetes', 'PyTorch', 'TensorFlow', 'LangChain'],
+                    achievements: [
+                        'Architected a privacy-preserving donation dApp leveraging Zero-Knowledge Proofs (ZKPs) to enable anonymous contributions while allowing donors to cryptographically prove participation for tax or reputation claims.',
+                        'Integrated Midnight\'s programmable privacy model using $DUST to shield transaction metadata and enable selective disclosure to auditors without exposing sensitive donor or recipient information.',
+                        'Designed and implemented secure smart contract logic and end-to-end verification workflows to ensure transparency, auditability, and compliance without compromising on-chain privacy.',
+                    ],
+                    url: 'https://github.com/ABCoder1/ZK-Charity'
+                },
+                {
+                    logo: 'chargeWise-logo',
+                    title: 'ChargeWise',
+                    description: 'A reinforcement learning-based system that provides real-time congestion-aware EV charger recommendations to minimize total wait and charging time.',
+                    technologies: ['Python', 'PyTorch', 'Reinforcement Learning', 'Multi-Agent Reinforcement Learning', 'Grid-Interactive Features', 'Dynamic Pricing', 'Adaptive Charge-Rate Optimization'],
+                    achievements: [
+                        'Leveraged Multi-Agent Reinforcement Learning (MARL) to optimize charger utilization and reduce congestion, improving overall user satisfaction and operational efficiency.',
+                        'Built grid-interactive features including a home energy reservoir participation model with user-facing savings and compensation visualization dashboards.',
+                        'Designed and implemented dynamic pricing and adaptive charge-rate optimization to incentivize off-peak usage and reduce public grid load.',
+                    ],
+                    url: 'https://github.com/ABCoder1/ChargeWise'
                 }
             ],
             'Skills': [
                 {
-                    logo: 'ucr-logo',
+                    logo: 'databases',
+                    title: 'Databases',
+                    description: 'Experienced in designing and managing SQL, NoSQL, and vector database systems, including schema design, query optimization, indexing, and data modeling for distributed microservice architectures.',
+                    icons: ['mysql-icon', 'mongodb-icon', 'redis-icon', 'postgresql-icon'],
+                },
+                {
+                    logo: 'languages',
                     title: 'Programming Languages',
-                    company: 'Technical Skills',
-                    period: 'Proficient',
-                    description: 'Expertise in multiple programming languages and frameworks for full-stack development.',
-                    technologies: ['JavaScript', 'Python', 'Java', 'C++', 'TypeScript'],
-                    achievements: [
-                        '5+ years experience',
-                        'Full-stack development',
-                        'Algorithm optimization'
-                    ]
+                    description: 'Strong foundation in core CS principles including OOPs, concurrency models, memory management, & multi-paradigm design, with production experience across Go, Python, TypeScript, and C++, building scalable, concurrent systems at Forcepoint and high-performance pipelines at UCR.',
+                    icons: ['python-icon', 'javascript-icon', 'cpp-icon', 'golang-icon'],
+                },
+                {
+                    logo: 'technologies',
+                    title: 'Technologies',
+                    description: 'Well versed in developing scalable full-stack solutions by leveraging Next.js and React for dynamic frontends, alongside high-performance FastAPI and Django backends, utilizing Tailwind CSS for responsive, utility-first design.',
+                    icons: ['django-icon', 'fastapi-icon', 'flask-icon', 'nextjs-icon', 'node-js-icon', 'vue-js-icon', 'tailwind-css-icon', 'react-icon'],
+                },
+                {
+                    logo: 'tools',
+                    title: 'Tools',
+                    description: 'Specializing in architecting scalable, agentic AI solutions via RAG and MCP, supported by robust MLOps and DevOps practices using Databricks, MLflow, and automated CI/CD pipelines.',
+                    icons: ['kubernetes-icon', 'wandb-icon', 'jenkins-icon', 'docker-icon', 'mlflow-icon', 'langchain-icon', 'anthropic-mcp-icon', 'databricks-icon'],
                 }
             ],
             'About Me': [
                 {
-                    logo: 'forcepoint-logo',
-                    title: 'Passionate Developer',
-                    company: 'Personal Info',
-                    period: 'Always Learning',
-                    description: 'Dedicated software engineer with a passion for creating innovative solutions and learning new technologies.',
-                    technologies: ['Problem Solving', 'Team Leadership', 'Innovation'],
-                    achievements: [
-                        'Quick learner',
-                        'Team player',
-                        'Innovation focused'
-                    ]
+                    logo: 'github-logo',
+                    title: 'Github',
+                    url: 'https://github.com/ABCoder1'
+                },
+                {
+                    logo: 'linkedin-logo',
+                    title: 'LinkedIn',
+                    url: 'https://www.linkedin.com/in/aditya-bhardwaj-57243217b/'
+                },
+                {
+                    logo: 'resume-logo',
+                    title: 'Resume',
+                    url: 'https://drive.google.com/file/d/1xW9oG2jf3oZRbh0avNfpNQaYZfHylKc5/view?usp=sharing'
                 }
             ]
         };
@@ -478,20 +515,29 @@ class PacManScene extends Phaser.Scene {
             orb.setScale(0.07); // Small size
             orb.setAlpha(0.9);
             
+            // Create cooldown meter graphics
+            const cooldownMeter = this.add.graphics();
+            cooldownMeter.setAlpha(0); // Initially invisible
+            cooldownMeter.setDepth(10); // Ensure it's visible above the orb
+            
             // Create orb container at calculated position
             const orbContainer = this.add.container(orbX, orbY);
-            orbContainer.add([orb]);
+            orbContainer.add([orb, cooldownMeter]);
             
             // Store orb data
             const orbObject = {
                 container: orbContainer,
                 orb: orb,
+                cooldownMeter: cooldownMeter,
                 glows: [],
                 data: item,
                 isInteracted: false,
                 canInteract: true,
                 originalX: orbX,
-                originalY: orbY
+                originalY: orbY,
+                originalAlpha: 0.9,
+                isInCooldown: false,
+                cooldownProgress: 0
             };
             
             section.orbs.push(orbObject);
@@ -530,6 +576,97 @@ class PacManScene extends Phaser.Scene {
                 repeat: -1,
                 ease: 'Sine.easeInOut'
             });
+        });
+    }
+
+    // Start cooldown visual effect on an orb
+    startCooldownVisual(orbObject) {
+        if (!orbObject || !orbObject.orb || !orbObject.cooldownMeter) return;
+        
+        orbObject.isInCooldown = true;
+        orbObject.cooldownProgress = 0;
+        
+        // Fade the orb (reduce alpha)
+        orbObject.orb.setAlpha(0.3);
+        
+        // Show the cooldown meter and animate its appearance
+        orbObject.cooldownMeter.setAlpha(1);
+        
+        const COOLDOWN_DURATION = 1200; // milliseconds
+        const METER_RADIUS = 20; // Radius of the circular meter
+        const METER_WIDTH = 3; // Width of the arc
+        const METER_COLOR = 0x00FFFF; // Cyan color for the meter
+        
+        // Animate the cooldown progress
+        const startTime = this.time.now;
+        
+        const updateCooldown = () => {
+            if (!orbObject.isInCooldown || !orbObject.cooldownMeter) return;
+            
+            const elapsed = this.time.now - startTime;
+            orbObject.cooldownProgress = Math.min(elapsed / COOLDOWN_DURATION, 1);
+            
+            // Clear previous drawings
+            orbObject.cooldownMeter.clear();
+            
+            // Draw the cooldown progress arc
+            if (orbObject.cooldownProgress > 0) {
+                orbObject.cooldownMeter.lineStyle(METER_WIDTH, METER_COLOR, 1);
+                
+                // Calculate the end angle (in radians)
+                // Starting from top (-Math.PI/2), going clockwise
+                const startAngle = -Math.PI / 2;
+                const endAngle = startAngle + (orbObject.cooldownProgress * 2 * Math.PI);
+                
+                // Draw the arc
+                orbObject.cooldownMeter.arc(
+                    0, 0,                    // Center of the orb
+                    METER_RADIUS,             // Radius
+                    startAngle,              // Start angle
+                    endAngle,                // End angle
+                    false                     // Anticlockwise
+                );
+                orbObject.cooldownMeter.strokePath();
+            }
+            
+            // Continue updating until cooldown is complete
+            if (orbObject.cooldownProgress < 1) {
+                this.time.addEvent({
+                    delay: 16, // ~60fps
+                    callback: updateCooldown,
+                    callbackScope: this
+                });
+            }
+        };
+        
+        // Start the cooldown update loop
+        updateCooldown();
+    }
+
+    // End cooldown visual effect on an orb
+    endCooldownVisual(orbObject) {
+        if (!orbObject || !orbObject.orb || !orbObject.cooldownMeter) return;
+        
+        orbObject.isInCooldown = false;
+        
+        // Restore the orb's original alpha with a smooth transition
+        this.tweens.add({
+            targets: orbObject.orb,
+            alpha: orbObject.originalAlpha,
+            duration: 300,
+            ease: 'Power2.easeOut'
+        });
+        
+        // Hide the cooldown meter with a fade out
+        this.tweens.add({
+            targets: orbObject.cooldownMeter,
+            alpha: 0,
+            duration: 200,
+            ease: 'Power2.easeOut',
+            onComplete: () => {
+                orbObject.cooldownMeter.clear();
+                orbObject.cooldownProgress = 0;
+            }
         });
     }
 
@@ -589,9 +726,10 @@ class PacManScene extends Phaser.Scene {
         this.overlayBg.setScrollFactor(0); // Fixed to camera
         this.overlayBg.setDepth(1000); // Ensure it's on top
 
-        // Keep your current overlay size
         const overlayWidth = Math.min(camera.width * 0.6, 350);
         const overlayHeight = Math.min(camera.height * 0.35, 250);
+        // Store overlay height for continuous keyboard scrolling
+        this.currentOverlayHeight = overlayHeight;
 
         // Create overlay container at SCREEN CENTER
         this.overlayContainer = this.add.container(camera.width / 2, camera.height / 2);
@@ -604,7 +742,8 @@ class PacManScene extends Phaser.Scene {
         overlayWindow.lineStyle(3, 0x00ffff, 1);
         overlayWindow.fillRoundedRect(-overlayWidth/2, -overlayHeight/2, overlayWidth, overlayHeight, 15);
         overlayWindow.strokeRoundedRect(-overlayWidth/2, -overlayHeight/2, overlayWidth, overlayHeight, 15);
-        
+        overlayWindow.setDepth(1002); // Ensure it's above the overlayContainer
+
         // Create non-scrollable content container
         this.nonScrollableContent = this.add.container(0, 0);
         this.nonScrollableContent.setScrollFactor(0); // Fixed to camera
@@ -623,127 +762,268 @@ class PacManScene extends Phaser.Scene {
         this.scrollableContent.setPosition(-overlayWidth/2, 0);
         this.scrollableContent.setSize(overlayWidth, overlayHeight/2);
 
+        // draw a red rectangle around the scrollableContent
+        const debugForScrollableContent = false;
+        if (debugForScrollableContent) {
+            const debugGraphics = this.add.graphics();
+            debugGraphics.lineStyle(2, 0xff0000, 0.7);
+            debugGraphics.strokeRect(
+                5,
+                5,
+                overlayWidth,
+                overlayHeight/2
+            );
+            debugGraphics.setDepth(1005); // Ensure it's above the scrollableContent
+            this.scrollableContent.add(debugGraphics);
+            // debugGraphics.setPosition(-overlayWidth/2, -overlayHeight/2);
+        }
+
         // Calculate text scaling for your specific overlay size - much smaller text
         const textScale = Math.max(0.5, Math.min(1, overlayWidth / 350));
         // const textScale = 1;
         
         // Content positioning - start from top with appropriate padding
-        let currentY = 20; // Start from top with smaller padding
+        let startYInContainer = 20;
+        let currentY = startYInContainer; // Start from top with smaller padding
         const contentPadding = 20;
         const lineSpacing = 10; // Smaller line spacing
-
+        const sectionTitleSize = Math.floor(12 * textScale);
+        const bodySize = Math.floor(10 * textScale);
 
         // Add logo at top
-        const logo = this.add.image(overlayWidth/2, currentY + contentPadding, data.logo);
-        logo.setScale(0.07 * textScale);
-        currentY += contentPadding + 2*lineSpacing;
+        let logo = null;
+        if (data.logo) {
+            logo = this.add.image(overlayWidth/2, currentY + contentPadding, data.logo);
+            logo.setScale(0.07 * textScale);
+            currentY += contentPadding + 2*lineSpacing;
+        }
         
         // Add title
-        const titleSize = Math.floor(14 * textScale);
-        const title = this.add.text(overlayWidth/2, currentY + contentPadding, data.title, {
-            fontSize: `${titleSize}px`,
-            fill: '#FFE400',
-            // fontFamily: this.fontLoaded ? 'Pixelify Sans' : 'Arial',
-            fontFamily: 'Monaco',
-            fontWeight: 'bold'
-        }).setOrigin(0.5);
-        currentY += titleSize/2 + 2*lineSpacing;
+        let title = null;
+        if (data.title){
+            const titleSize = Math.floor(14 * textScale);
+            title = this.add.text(overlayWidth/2, currentY + contentPadding, data.title, {
+                fontSize: `${titleSize}px`,
+                fill: '#FFE400',
+                // fontFamily: this.fontLoaded ? 'Pixelify Sans' : 'Arial',
+                fontFamily: 'Monaco',
+                fontWeight: 'bold'
+            }).setOrigin(0.5);
+            currentY += 2*lineSpacing;
+        }
         
         // Add company and period
-        const subtitleSize = Math.floor(10 * textScale);
-        const company = this.add.text(overlayWidth/2, currentY + contentPadding, `${data.company} | ${data.period}`, {
-            fontSize: `${subtitleSize}px`,
-            fill: '#00FFFF',
-            // fontFamily: this.fontLoaded ? 'Pixelify Sans' : 'Arial'
-            fontFamily: 'Monaco'
-        }).setOrigin(0.5);
-        currentY += subtitleSize/2 + 2*lineSpacing;
+        let company = null;
+        if (data.company && data.period) {
+            const subtitleSize = Math.floor(10 * textScale);
+            company = this.add.text(overlayWidth/2, currentY + contentPadding, `${data.company} | ${data.period}`, {
+                fontSize: `${subtitleSize}px`,
+                fill: '#00FFFF',
+                // fontFamily: this.fontLoaded ? 'Pixelify Sans' : 'Arial'
+                fontFamily: 'Monaco'
+            }).setOrigin(0.5);
+            currentY += lineSpacing;
+        }
         
         // Reset position for scrollableContent container
-        currentY = overlayHeight/2;
+        currentY = 0; 
+        currentY += contentPadding; // Add additional padding from the top
 
         // Add description
-        const bodySize = Math.floor(10 * textScale);
-        const description = this.add.text(overlayWidth/2, overlayHeight/6 + 0.6*lineSpacing, data.description, { // We use overlayHeight/4 here because our description itself takes 4 lines of space
-            fontSize: `${bodySize}px`,
-            fill: '#FFFFFF',
-            // fontFamily: this.fontLoaded ? 'Pixelify Sans' : 'Arial',
-            fontFamily: 'Monaco',
-            wordWrap: { width: overlayWidth - contentPadding * 2 },
-            align: 'center'
-        }).setOrigin(0.5);
-        currentY -= 1.5*lineSpacing;
-        
-        // Add technologies title
-        const sectionTitleSize = Math.floor(12 * textScale);
-        const techTitle = this.add.text(overlayWidth/2, currentY, 'Technologies:', {
-            fontSize: `${sectionTitleSize}px`,
-            fill: '#FFE400',
-            // fontFamily: this.fontLoaded ? 'Pixelify Sans' : 'Arial',
-            fontFamily: 'Monaco',
-            fontWeight: 'bold'
-        }).setOrigin(0.5);
-        currentY += 2*lineSpacing;
+        let description = null;
+        if (data.description) {
+            description = this.add.text(overlayWidth/2, currentY + contentPadding, data.description, { // We use overlayHeight/4 here because our description itself takes 4 lines of space
+                fontSize: `${bodySize}px`,
+                fill: '#FFFFFF',
+                // fontFamily: this.fontLoaded ? 'Pixelify Sans' : 'Arial',
+                fontFamily: 'Monaco',
+                wordWrap: { width: overlayWidth - contentPadding * 2 },
+                align: 'center'
+            }).setOrigin(0.5);
+            currentY += 2*contentPadding + lineSpacing;
+        }
 
-        // Add technologies body
-        const techBodySize = Math.floor(10 * textScale);
-        const technologies = this.add.text(overlayWidth/2, currentY + contentPadding, data.technologies.join(' • '), {
-            fontSize: `${techBodySize}px`,
-            fill: '#00FF00',
-            // fontFamily: this.fontLoaded ? 'Pixelify Sans' : 'Arial',
-            fontFamily: 'Monaco',
-            wordWrap: { width: overlayWidth - contentPadding * 2 },
-            align: 'center'
-        }).setOrigin(0.5);
-        
-        const techHeight = technologies.height;
-        currentY += techHeight + 2*lineSpacing;
-        
-        // Add achievements title
-        const achieveTitle = this.add.text(overlayWidth/2, currentY + lineSpacing, 'Key Achievements:', {
-            fontSize: `${sectionTitleSize}px`,
-            fill: '#FFE400',
-            // fontFamily: this.fontLoaded ? 'Pixelify Sans' : 'Arial',
-            fontFamily: 'Monaco',
-            fontWeight: 'bold'
-        }).setOrigin(0.5);
-        currentY += sectionTitleSize + lineSpacing;
-        
-        const achievements = this.add.text(overlayWidth/2, currentY + lineSpacing, data.achievements.map(a => `• ${a}`).join('\n\n'), {
-            fontSize: `${techBodySize}px`,
-            fill: '#FFFFFF',
-            // fontFamily: this.fontLoaded ? 'Pixelify Sans' : 'Arial',
-            fontFamily: 'Arial',
-            wordWrap: { width: overlayWidth - contentPadding * 2 },
-            align: 'left',
-            lineSpacing: 2
-        }).setOrigin(0.5, 0);
-        
-        const achievementsHeight = achievements.height;
-        currentY += achievementsHeight + lineSpacing;
+        // Add technologies
+        let techTitle = null;
+        let technologies = null;
+        if (data.technologies) {
+            techTitle = this.add.text(overlayWidth/2, currentY + contentPadding + lineSpacing, 'Technologies:', {
+                fontSize: `${sectionTitleSize}px`,
+                fill: '#FFE400',
+                // fontFamily: this.fontLoaded ? 'Pixelify Sans' : 'Arial',
+                fontFamily: 'Monaco',
+                fontWeight: 'bold'
+            }).setOrigin(0.5);
+            currentY += 2*contentPadding + 2*lineSpacing;
+
+            // Add technologies list
+            technologies = this.add.text(overlayWidth/2, currentY + contentPadding, data.technologies.join(' • '), {
+                fontSize: `${bodySize}px`,
+                fill: '#00FF00',
+                // fontFamily: this.fontLoaded ? 'Pixelify Sans' : 'Arial',
+                fontFamily: 'Monaco',
+                wordWrap: { width: overlayWidth - contentPadding * 2 },
+                align: 'center'
+            }).setOrigin(0.5);
+            
+            const techHeight = technologies.height;
+            currentY += techHeight + 2*lineSpacing;
+        }
+
+        // Add achievements
+        let achieveTitle = null;
+        let achievements = null;
+        if (data.achievements) {
+            achieveTitle = this.add.text(overlayWidth/2, currentY + contentPadding, 'Key Achievements:', {
+                fontSize: `${sectionTitleSize}px`,
+                fill: '#FFE400',
+                // fontFamily: this.fontLoaded ? 'Pixelify Sans' : 'Arial',
+                fontFamily: 'Monaco',
+                fontWeight: 'bold'
+            }).setOrigin(0.5);
+            currentY += 2*lineSpacing;
+            
+            achievements = this.add.text(overlayWidth/2, currentY + contentPadding, data.achievements.map(a => `• ${a}`).join('\n\n'), {
+                fontSize: `${bodySize}px`,
+                fill: '#FFFFFF',
+                // fontFamily: this.fontLoaded ? 'Pixelify Sans' : 'Arial',
+                fontFamily: 'Arial',
+                wordWrap: { width: overlayWidth - contentPadding * 2 },
+                align: 'left',
+                lineSpacing: 2
+            }).setOrigin(0.5, 0);
+            
+            const achievementsHeight = achievements.height;
+            currentY += achievementsHeight + lineSpacing;
+        }
+
+        // Add URL
+        let openLinkPrompt = null;
+        let openLinkYesText = null;
+        let openLinkNoText = null;
+        this.currentOverlayUrl = null;
+        this.openLinkSelectionBox = null;
+        this.openLinkYesText = null;
+        this.openLinkNoText = null;
+        this.openLinkSelectedIndex = 0;
+        this.openLinkNavKeys = null;
+        if (data.url) {
+            this.currentOverlayUrl = data.url;
+
+            // Prompt text
+            const promptY = currentY + contentPadding + lineSpacing; // earlier : overlayHeight/2 - 48
+            openLinkPrompt = this.add.text(overlayWidth/2, promptY, 'Open this in a new tab?', {
+                fontSize: `${bodySize}px`,
+                fill: '#FFE400',
+                fontFamily: 'Monaco',
+                fontStyle: 'bold'
+            }).setOrigin(0.5);
+
+            // Yes / No option texts
+            // const optionsY = overlayHeight/2 - 30;
+            const optionsY = promptY + contentPadding + 0.50*lineSpacing;
+            const optionFontSize = Math.floor(8 * textScale);
+
+            openLinkYesText = this.add.text(overlayWidth/2 - 40, optionsY, 'YES', {
+                fontSize: `${optionFontSize}px`,
+                fill: '#FFFFFF',
+                fontFamily: 'Monaco',
+                fontStyle: 'italic'
+            }).setOrigin(0.5);
+
+            openLinkNoText = this.add.text(overlayWidth/2 + 40, optionsY, 'NO', {
+                fontSize: `${optionFontSize}px`,
+                fill: '#FFFFFF',
+                fontFamily: 'Monaco',
+                fontStyle: 'italic'
+            }).setOrigin(0.5);
+
+            // Create a selection box that will highlight the currently selected option
+            this.openLinkSelectionBox = this.add.graphics();
+            // this.openLinkSelectionBox.setSize(openLinkYesText.width + 24, openLinkYesText.height + 12);
+            // this.openLinkSelectionBox.fillRoundedRect(-openLinkYesText.width/2, -openLinkYesText.height/2, openLinkYesText.width, openLinkYesText.height, 5);
+            // this.openLinkSelectionBox.strokeRoundedRect(-openLinkYesText.width/2, -openLinkYesText.height/2, openLinkYesText.width, openLinkYesText.height, 5);
+            
+            this.openLinkSelectionBox.lineStyle(2, 0xff0000, 0.7);
+            this.openLinkSelectionBox.strokeRect(
+                -openLinkYesText.width/2,
+                -openLinkYesText.height/2,
+                openLinkYesText.width,
+                openLinkYesText.height
+            );
+            this.openLinkSelectionBox.setDepth(1004);
+
+            this.openLinkYesText = openLinkYesText;
+            this.openLinkNoText = openLinkNoText;
+            this.openLinkSelectedIndex = 0; // 0 = YES, 1 = NO
+
+            // Initialize selection highlight around YES
+            this.setOpenLinkSelection(0);
+
+            // Create nav keys for selection (handled in update via JustDown)
+            const aKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.A);
+            const dKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.D);
+            const leftKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.LEFT);
+            const rightKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.RIGHT);
+            this.openLinkNavKeys = { A: aKey, D: dKey, LEFT: leftKey, RIGHT: rightKey };
+
+            // Advance currentY to the bottom of the URL prompt (prompt line + options line + padding)
+            currentY = optionsY;
+        }
+
+
+        // Add Icons in a 4x2 grid with hidden borders
+        const gridCols = 4;
+        let gridRows = 2;
+        const iconScale = 0.05 * textScale;
+        const cellHeight = 40;
+        let icons = [];
+        this.overlayIconImages = null;
+
+        if (data.icons && data.icons.length > 0) {
+            const cellWidth = overlayWidth / gridCols;
+            const iconsStartY = currentY + contentPadding;
+            currentY += contentPadding;
+            data.icons.forEach((iconKey, index) => {
+                const col = index % gridCols;
+                const row = Math.floor(index / gridCols);
+                gridRows = row+1;
+                const x = (col + 0.5) * cellWidth;
+                const y = iconsStartY + (row + 1) * (cellHeight + 2*lineSpacing);
+                const img = this.add.image(x, y, iconKey).setScale(iconScale);
+                icons.push(img);
+            });
+            currentY += gridRows * (cellHeight + 2*contentPadding);
+            this.overlayIconImages = icons;
+        }
 
         // Add non-scrollable content elements to main content container
-        this.nonScrollableContent.add([
-            logo, title, company
-        ]);
+        if (Object.prototype.hasOwnProperty.call(data, 'logo')) this.nonScrollableContent.add(logo);
+        if (Object.prototype.hasOwnProperty.call(data, 'title')) this.nonScrollableContent.add(title);
+        if (Object.prototype.hasOwnProperty.call(data, 'company')) this.nonScrollableContent.add(company);
 
         // Add all the scrollable content elements to scrollable container
-        this.scrollableContent.add([
-            description, techTitle, technologies, achieveTitle, achievements
-        ]);
-        
+        if (Object.prototype.hasOwnProperty.call(data, 'description')) this.scrollableContent.add(description);
+        if (Object.prototype.hasOwnProperty.call(data, 'technologies')) this.scrollableContent.add([techTitle, technologies]);
+        if (Object.prototype.hasOwnProperty.call(data, 'achievements')) this.scrollableContent.add([achieveTitle, achievements]);
+        if (Object.prototype.hasOwnProperty.call(data, 'url')) this.scrollableContent.add([openLinkPrompt, openLinkYesText, openLinkNoText, this.openLinkSelectionBox]);
+        if (Object.prototype.hasOwnProperty.call(data, 'icons')) this.scrollableContent.add(icons);
+
         // Calculate total content height and if scrolling is needed
-        const startY = -overlayHeight/2 + 20; // content start Y
-        const totalContentHeight = currentY - startY; // Total content height from start position
-        const availableHeight = overlayHeight - 50;
+        const startYInWorld = -overlayHeight/2 + 2*startYInContainer; // content start Y
+        // const startY = -overlayHeight/2 + contentPadding;
+        const totalContentHeight = currentY - startYInWorld; // Total content height from start position
+        // const availableHeight = overlayHeight - 50;
+        const availableHeight = overlayHeight/2 + contentPadding + 1.5*lineSpacing;
         const needsScrolling = totalContentHeight > availableHeight;
-        console.log('needsScrolling', needsScrolling);
+        console.log('needs scrolling ? :', needsScrolling);
 
         // Create & position the mask graphics
         const worldPos = this.tilesToWorldPosition(section.tileX, section.tileY);
         const maskShape = this.add.graphics();
         maskShape.fillStyle(0x001122); // Color doesn't matter for the mask, just its shape
-        maskShape.fillRect(worldPos.x - overlayWidth/2, worldPos.y + 1.5*lineSpacing, overlayWidth, overlayHeight/4 + contentPadding);
+        // maskShape.fillRect(worldPos.x - overlayWidth/2, worldPos.y + 1.5*lineSpacing, overlayWidth, overlayHeight/4 + contentPadding);
+        maskShape.fillRect(worldPos.x - overlayWidth/2, worldPos.y + 0.5*lineSpacing, overlayWidth, overlayHeight/4 + contentPadding);
 
         this.maskShape = maskShape;
         // Create the mask itself
@@ -755,35 +1035,178 @@ class PacManScene extends Phaser.Scene {
         // Scroll properties
         this.scrollY = 0;
         this.maxScrollY = needsScrolling ? Math.max(0, totalContentHeight - availableHeight) : 0;
-        console.log('maxScrollY', this.maxScrollY);
+        console.log('Amount to scroll (along Y-axis): ', this.maxScrollY);
         
-        // Add scroll instructions if needed
-        let scrollInstructions = null;
-        // if (needsScrolling) {
-        //     scrollInstructions = this.add.text(0, overlayHeight/2 - 25, 'Use Mouse Wheel to scroll', {
-        //         fontSize: `${Math.floor(8 * textScale)}px`,
-        //         // fill: '#888888',
-        //         fill: '#FFFFFF',
-        //         // fontFamily: this.fontLoaded ? 'Pixelify Sans' : 'Arial',
-        //         fontFamily: 'Monaco',
-        //         fontStyle: 'italic'
-        //     }).setOrigin(0.5);
-        // }
+        // Create ESC button in top left corner
+        const escButtonPadding = 10;
+        const escButtonScale = this.currentScale * 0.065; // Same scale as instructional arrows
+        const escButtonX = -overlayWidth/2 + 3.0*escButtonPadding;
+        const escButtonY = -overlayHeight/2 + 2.5*escButtonPadding;
         
-        // Add close instruction
-        const closeText = this.add.text(0, overlayHeight/2 - 15, 'Use Mouse Wheel to scroll | Press ESC to close', {
-            fontSize: `${Math.floor(8 * textScale)}px`,
-            // fill: '#888888',
-            fill: '#FFFFFF',
-            // fontFamily: this.fontLoaded ? 'Pixelify Sans' : 'Arial',
-            fontFamily: 'Monaco',
-            fontStyle: 'italic'
-        }).setOrigin(0.5);
+        // Calculate bounding box size for ESC button
+        const escBoxWidth = 37;
+        const escBoxHeight = 30;
+        const escBoxPadding = 5;
+        
+        // Create bounding box (background) for ESC button
+        const escBoundingBox = this.add.graphics();
+        escBoundingBox.fillStyle(0x000000, 0.8);
+        escBoundingBox.lineStyle(2, 0xFFFFFF, 1);
+        escBoundingBox.fillRoundedRect(-escBoxWidth/2, -escBoxHeight/2, escBoxWidth, escBoxHeight, 5);
+        escBoundingBox.strokeRoundedRect(-escBoxWidth/2, -escBoxHeight/2, escBoxWidth, escBoxHeight, 5);
+        escBoundingBox.setScale(this.currentScale*0.80);
+        
+        // ESC button icon
+        const escButtonIcon = this.add.image(0, -escBoxPadding, 'esc-key-logo'); // Start slightly above center
+        escButtonIcon.setScale(escButtonScale);
+        escButtonIcon.setAlpha(1.0);
+
+        // ESC button container
+        const escButtonContainer = this.add.container(escButtonX, escButtonY);
+        escButtonContainer.add([escBoundingBox, escButtonIcon]); // Box first (behind), then icon
+        escButtonContainer.setScrollFactor(0);
+        escButtonContainer.setDepth(1003);
+        
+        // Add pressing down animation to ESC button
+        const originalScaleX = escButtonIcon.scaleX;
+        const originalScaleY = escButtonIcon.scaleY;
+        const originalY = escButtonIcon.y;
+        const escPressDownDistance = 8; // Distance to move down within the box
+        
+        const pressDownEsc = () => {
+            // Press down: scale down and move down within the bounding box
+            this.tweens.add({
+                targets: escButtonIcon,
+                scaleX: originalScaleX * 0.85,
+                scaleY: originalScaleY * 0.85,
+                y: originalY + this.currentScale * escPressDownDistance/2,
+                duration: 150,
+                ease: 'Power2',
+                onComplete: () => {
+                    // Release: return to normal position within box
+                    this.tweens.add({
+                        targets: escButtonIcon,
+                        scaleX: originalScaleX,
+                        scaleY: originalScaleY,
+                        y: originalY,
+                        duration: 500,
+                        ease: 'Power2',
+                        onComplete: () => {
+                            // Wait a bit before next press
+                            this.time.delayedCall(250, pressDownEsc, [], this);
+                        }
+                    });
+                }
+            });
+        };
+        
+        // Start the first press animation
+        pressDownEsc();
+        
+        // Store bounding box reference for cleanup
+        this.escBoundingBox = escBoundingBox;
+        
+        // Create scroll indicator
+        let scrollIndicator = null;
+        if (needsScrolling) {
+            // Create scroll indicator container at center of overlay
+            scrollIndicator = this.add.container(0, 0);
+            scrollIndicator.setPosition(0, 0);
+            scrollIndicator.setScrollFactor(0);
+            scrollIndicator.setDepth(1003);
+            
+            // Create up and down arrows
+            const arrowSize = 15;
+            
+            // Up arrow (initially hidden)
+            const upArrow = this.add.graphics();
+            upArrow.lineStyle(2, 0x00FFFF, 1);
+            upArrow.beginPath();
+            upArrow.moveTo(0, -arrowSize/2);
+            upArrow.lineTo(-arrowSize/2, arrowSize/2);
+            upArrow.lineTo(arrowSize/2, arrowSize/2);
+            upArrow.closePath();
+            upArrow.strokePath();
+            upArrow.fillStyle(0x00FFFF, 0.5);
+            upArrow.fillPath();
+            upArrow.setPosition(0, -lineSpacing); // Position at top
+            upArrow.setAlpha(0); // Initially hidden
+            upArrow.setVisible(false);
+
+            // Down arrow (initially visible)
+            const downArrow = this.add.graphics();
+            downArrow.lineStyle(2, 0x00FFFF, 1);
+            downArrow.beginPath();
+            downArrow.moveTo(0, arrowSize/2);
+            downArrow.lineTo(-arrowSize/2, -arrowSize/2);
+            downArrow.lineTo(arrowSize/2, -arrowSize/2);
+            downArrow.closePath();
+            downArrow.strokePath();
+            downArrow.fillStyle(0x00FFFF, 0.5);
+            downArrow.fillPath();
+            downArrow.setPosition(0, overlayHeight/2 - 15);
+            
+            // Add pulsing animation to arrows
+            this.tweens.add({
+                targets: [upArrow, downArrow],
+                alpha: { from: 0.3, to: 1 },
+                duration: 800,
+                yoyo: true,
+                repeat: -1,
+                ease: 'Sine.easeInOut'
+            });
+            
+            // Add vertical movement animation
+            this.tweens.add({
+                targets: scrollIndicator,
+                y: 3,
+                duration: 1000,
+                yoyo: true,
+                repeat: -1,
+                ease: 'Sine.easeInOut'
+            });
+            
+            scrollIndicator.add([upArrow, downArrow]);
+            
+            // Store arrow references for dynamic control
+            this.scrollUpArrow = upArrow;
+            this.scrollDownArrow = downArrow;
+            this.hasUserScrolled = false; // Track if user has scrolled
+            
+            // Auto-hide scroll indicator after 3 seconds only if user hasn't scrolled
+            this.scrollIndicatorAutoHideTimer = this.time.delayedCall(3000, () => {
+                if (scrollIndicator && scrollIndicator.active && !this.hasUserScrolled) {
+                    this.tweens.add({
+                        targets: scrollIndicator,
+                        alpha: 0,
+                        duration: 500,
+                        ease: 'Power2',
+                        onComplete: () => {
+                            if (scrollIndicator && scrollIndicator.active) {
+                                scrollIndicator.setVisible(false);
+                            }
+                        }
+                    });
+                }
+            }, [], this);
+        }
         
         // Add all elements to overlayContainer
-        const elementsToAdd = [overlayWindow, this.nonScrollableContent, this.scrollableContent, closeText];
-        if (scrollInstructions) elementsToAdd.push(scrollInstructions);
+        const elementsToAdd = [overlayWindow, this.nonScrollableContent, this.scrollableContent, escButtonContainer];
+
+        // Add external link prompt & options if present
+        // if (this.openLinkSelectionBox) elementsToAdd.push(this.openLinkSelectionBox);
+        // if (openLinkPrompt) elementsToAdd.push(openLinkPrompt);
+        // if (openLinkYesText) elementsToAdd.push(openLinkYesText);
+        // if (openLinkNoText) elementsToAdd.push(openLinkNoText);
+
+        if (scrollIndicator) elementsToAdd.push(scrollIndicator);
         this.overlayContainer.add(elementsToAdd);
+        
+        // Store references for cleanup
+        this.escButtonContainer = escButtonContainer;
+        this.escButtonIcon = escButtonIcon;
+        this.scrollIndicator = scrollIndicator;
 
         const debug = 0;
         if (debug > 0) {
@@ -843,10 +1266,51 @@ class PacManScene extends Phaser.Scene {
 
         // Setup scroll controls if needed
         if (needsScrolling) {
-            // Mouse-only scroll: prevent default page scroll while overlay open
+            // Mouse scroll: prevent default page scroll while overlay open
             this.input.on('wheel', (pointer, gameObjects, deltaX, deltaY) => {
                 if (this.overlayOpen) {
                     this.scrollContent(deltaY, overlayHeight);
+                }
+            });
+            
+            // Keyboard scroll support: W/S and Up/Down arrow keys
+            const wasdKeys = this.input.keyboard.addKeys('W,S');
+            const arrowUp = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.UP);
+            const arrowDown = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.DOWN);
+            
+            // Store references for cleanup
+            this.overlayScrollKeys = {
+                W: wasdKeys.W,
+                S: wasdKeys.S,
+                UP: arrowUp,
+                DOWN: arrowDown
+            };
+            
+            // W key - scroll up
+            wasdKeys.W.on('down', () => {
+                if (this.overlayOpen) {
+                    this.scrollContent(-15, overlayHeight);
+                }
+            });
+            
+            // S key - scroll down
+            wasdKeys.S.on('down', () => {
+                if (this.overlayOpen) {
+                    this.scrollContent(15, overlayHeight);
+                }
+            });
+            
+            // Up arrow key - scroll up
+            arrowUp.on('down', () => {
+                if (this.overlayOpen) {
+                    this.scrollContent(-15, overlayHeight);
+                }
+            });
+            
+            // Down arrow key - scroll down
+            arrowDown.on('down', () => {
+                if (this.overlayOpen) {
+                    this.scrollContent(15, overlayHeight);
                 }
             });
         }
@@ -870,6 +1334,12 @@ class PacManScene extends Phaser.Scene {
         // Use the standard listener, which will call the closeOverlay method on the scene instance.
         // The orbObject reference is now stored on the scene instance.
         this.escKey.on('down', this.closeOverlay, this);
+
+        // Setup ENTER key listener to open external link
+        if (this.currentOverlayUrl) {
+            this.enterKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ENTER);
+            this.enterKey.on('down', this.handleOverlayEnter, this);
+        }
     }
 
     // Cleanup overlay elements immediately
@@ -904,11 +1374,61 @@ class PacManScene extends Phaser.Scene {
             this.nonScrollableContent = null;
         }
         
-        // Destroy scrollable content container
+        // Destroy overlay icon images explicitly, then scrollable content container
+        if (this.overlayIconImages && Array.isArray(this.overlayIconImages)) {
+            this.overlayIconImages.forEach(img => {
+                if (img && typeof img.destroy === 'function') img.destroy();
+            });
+            this.overlayIconImages = null;
+        }
         if (this.scrollableContent) {
             this.scrollableContent.destroy();
             this.scrollableContent = null;
         }
+        
+        // Clean up ESC button and scroll indicator
+        if (this.escButtonContainer) {
+            this.tweens.killTweensOf(this.escButtonContainer);
+            // Also kill tweens on the icon if it exists
+            if (this.escButtonIcon) {
+                this.tweens.killTweensOf(this.escButtonIcon);
+            }
+            this.escButtonContainer = null;
+            this.escButtonIcon = null;
+        }
+        
+        if (this.scrollIndicator) {
+            this.tweens.killTweensOf(this.scrollIndicator);
+            if (this.scrollUpArrow) {
+                this.tweens.killTweensOf(this.scrollUpArrow);
+            }
+            if (this.scrollDownArrow) {
+                this.tweens.killTweensOf(this.scrollDownArrow);
+            }
+            // Clean up auto-hide timer
+            if (this.scrollIndicatorAutoHideTimer) {
+                this.scrollIndicatorAutoHideTimer.remove();
+                this.scrollIndicatorAutoHideTimer = null;
+            }
+            this.scrollIndicator = null;
+            this.scrollUpArrow = null;
+            this.scrollDownArrow = null;
+            this.hasUserScrolled = false;
+        }
+
+        // Reset cached overlay height
+        this.currentOverlayHeight = null;
+
+        // Reset open-link prompt state
+        this.currentOverlayUrl = null;
+        this.openLinkNavKeys = null;
+        this.openLinkSelectionBox = null;
+        this.openLinkYesText = null;
+        this.openLinkNoText = null;
+        this.openLinkSelectedIndex = 0;
+
+        // Ensure overlay icon images reference is cleared
+        this.overlayIconImages = null;
     }
 
     // Handle content scrolling
@@ -917,7 +1437,167 @@ class PacManScene extends Phaser.Scene {
         this.scrollY = Phaser.Math.Clamp(this.scrollY + deltaY, 0, this.maxScrollY);
 
         this.scrollableContent.setY(-this.scrollY);
-        // this.scrollableContent.setY(this.scrollY + (overlayHeight / 2 + 20));
+        
+        // Mark that user has scrolled (cancel auto-hide)
+        if (!this.hasUserScrolled) {
+            this.hasUserScrolled = true;
+            // Cancel auto-hide timer if it exists
+            if (this.scrollIndicatorAutoHideTimer) {
+                this.scrollIndicatorAutoHideTimer.remove();
+                this.scrollIndicatorAutoHideTimer = null;
+            }
+            // Make sure indicator is visible
+            if (this.scrollIndicator && !this.scrollIndicator.visible) {
+                this.scrollIndicator.setVisible(true);
+                this.scrollIndicator.setAlpha(1);
+            }
+        }
+        
+        // Update scroll indicator arrows based on scroll position
+        // Show arrows when scrolling in that direction is still possible
+        if (this.scrollIndicator && this.scrollIndicator.visible && this.scrollUpArrow && this.scrollDownArrow) {
+            const scrollThreshold = 5; // Small threshold to avoid flickering at edges
+            const canScrollUp = this.scrollY > scrollThreshold;
+            const canScrollDown = this.scrollY < this.maxScrollY - scrollThreshold;
+            
+            // Show/hide up arrow based on whether scrolling up is possible
+            if (canScrollUp) {
+                if (!this.scrollUpArrow.visible) {
+                    this.scrollUpArrow.setVisible(true);
+                    this.tweens.add({
+                        targets: this.scrollUpArrow,
+                        alpha: 1,
+                        duration: 200,
+                        ease: 'Power2'
+                    });
+                }
+            } else {
+                if (this.scrollUpArrow.visible) {
+                    this.tweens.add({
+                        targets: this.scrollUpArrow,
+                        alpha: 0,
+                        duration: 200,
+                        ease: 'Power2',
+                        onComplete: () => {
+                            this.scrollUpArrow.setVisible(false);
+                        }
+                    });
+                }
+            }
+            
+            // Show/hide down arrow based on whether scrolling down is possible
+            if (canScrollDown) {
+                if (!this.scrollDownArrow.visible) {
+                    this.scrollDownArrow.setVisible(true);
+                    this.tweens.add({
+                        targets: this.scrollDownArrow,
+                        alpha: 1,
+                        duration: 200,
+                        ease: 'Power2'
+                    });
+                }
+            } else {
+                if (this.scrollDownArrow.visible) {
+                    this.tweens.add({
+                        targets: this.scrollDownArrow,
+                        alpha: 0,
+                        duration: 200,
+                        ease: 'Power2',
+                        onComplete: () => {
+                            this.scrollDownArrow.setVisible(false);
+                        }
+                    });
+                }
+            }
+        }
+    }
+
+    // Update the selection highlight for the open-link YES/NO options
+    setOpenLinkSelection(index) {
+        if (!this.openLinkSelectionBox || !this.openLinkYesText || !this.openLinkNoText) return;
+
+        this.openLinkSelectedIndex = index;
+        const targetText = index === 0 ? this.openLinkYesText : this.openLinkNoText;
+
+        const paddingX = 12;
+        const paddingY = 6;
+
+        const x = targetText.x - targetText.width / 2 - paddingX;
+        const y = targetText.y - targetText.height / 2 - paddingY;
+        const width = targetText.width + paddingX * 2;
+        const height = targetText.height + paddingY * 2;
+
+        this.openLinkSelectionBox.clear();
+        this.openLinkSelectionBox.lineStyle(2, 0x66ccff, 1);       // Lighter blue border
+        this.openLinkSelectionBox.fillStyle(0x003366, 0.6);        // Dark blue fill
+        this.openLinkSelectionBox.fillRoundedRect(x, y, width, height, 6);
+        this.openLinkSelectionBox.strokeRoundedRect(x, y, width, height, 6);
+    }
+
+    // Handle ENTER key when overlay has an external link
+    handleOverlayEnter() {
+        if (!this.overlayOpen) return;
+
+        // If there is no URL, ENTER does nothing special
+        if (!this.currentOverlayUrl) return;
+
+        // YES selected: open link in new tab
+        if (this.openLinkSelectedIndex === 0) {
+            try {
+                window.open(this.currentOverlayUrl, '_blank');
+            } catch (e) {
+                console.warn('Unable to open external link:', this.currentOverlayUrl, e);
+            }
+        }
+
+        // In both YES and NO cases, close the overlay afterwards
+        this.closeOverlay();
+    }
+
+    // Continuous keyboard-based scrolling for the overlay
+    updateOverlayScrollInput() {
+        // Only process when overlay is open and scroll keys are registered
+        if (!this.overlayOpen || !this.overlayScrollKeys || !this.currentOverlayHeight) return;
+
+        const scrollStep = 10;
+        let deltaY = 0;
+
+        // Scroll up with W or Up Arrow
+        if (this.overlayScrollKeys.W.isDown || this.overlayScrollKeys.UP.isDown) {
+            deltaY -= scrollStep;
+        }
+
+        // Scroll down with S or Down Arrow
+        if (this.overlayScrollKeys.S.isDown || this.overlayScrollKeys.DOWN.isDown) {
+            deltaY += scrollStep;
+        }
+
+        // Apply scrolling if any key is held
+        if (deltaY !== 0) {
+            this.scrollContent(deltaY, this.currentOverlayHeight);
+        }
+    }
+
+    // Handle open-link prompt selection navigation (A/D or Left/Right)
+    updateOpenLinkPromptInput() {
+        if (!this.overlayOpen || !this.currentOverlayUrl || !this.openLinkNavKeys) return;
+        if (!this.openLinkSelectionBox || !this.openLinkYesText || !this.openLinkNoText) return;
+
+        // Select YES
+        if (
+            Phaser.Input.Keyboard.JustDown(this.openLinkNavKeys.LEFT) ||
+            Phaser.Input.Keyboard.JustDown(this.openLinkNavKeys.A)
+        ) {
+            this.setOpenLinkSelection(0);
+        }
+
+        // Select NO
+        if (
+            Phaser.Input.Keyboard.JustDown(this.openLinkNavKeys.RIGHT) ||
+            Phaser.Input.Keyboard.JustDown(this.openLinkNavKeys.D)
+        ) {
+            this.setOpenLinkSelection(1);
+        }
     }
 
     // Close overlay when ESC is pressed
@@ -933,6 +1613,27 @@ class PacManScene extends Phaser.Scene {
 
         // Remove wheel event listener
         this.input.off('wheel');
+        
+        // Remove keyboard scroll listeners
+        if (this.overlayScrollKeys) {
+            this.overlayScrollKeys.W.off('down');
+            this.overlayScrollKeys.S.off('down');
+            this.overlayScrollKeys.UP.off('down');
+            this.overlayScrollKeys.DOWN.off('down');
+            this.overlayScrollKeys = null;
+        }
+
+        // Remove ENTER key listener for external link
+        if (this.enterKey) {
+            this.enterKey.off('down', this.handleOverlayEnter, this);
+            this.enterKey = null;
+        }
+
+        // Clear open-link prompt nav keys
+        this.openLinkNavKeys = null;
+
+        // Clear current overlay URL
+        this.currentOverlayUrl = null;
         
         // Immediate cleanup - don't wait for animation
         this.cleanupOverlayElements();
@@ -961,7 +1662,7 @@ class PacManScene extends Phaser.Scene {
         // Retrieve the orb object that was stored in showOverlay
         const orbObject = this.currentOrbToClose;
 
-        console.log('orbObject after closeOverlay', orbObject);
+        console.log('orbObject after closeOverlay : ', orbObject);
         // Only reset the current orb; leave others intact
         if (orbObject) {
             // Reset flags
@@ -977,9 +1678,13 @@ class PacManScene extends Phaser.Scene {
 
             this.currentOrbToClose = null;
             
+            // Start cooldown visual effect
+            this.startCooldownVisual(orbObject);
+            
             // Allow interaction again after a cooldown
             this.time.delayedCall(1200, () => {
                 orbObject.canInteract = true;
+                this.endCooldownVisual(orbObject);
             }, [], this);
         } else {
             // Fallback: do not touch other orbs' state; just clear reference
@@ -1247,9 +1952,25 @@ class PacManScene extends Phaser.Scene {
             section.orbs.forEach(orb => {
                 // Reset orb interaction state
                 orb.isInteracted = false;
+                orb.canInteract = true;
+                orb.isInCooldown = false;
+                orb.cooldownProgress = 0;
+                
+                // Restore original alpha
+                if (orb.orb && orb.originalAlpha !== undefined) {
+                    orb.orb.setAlpha(orb.originalAlpha);
+                }
+                
+                // Hide and clear cooldown meter
+                if (orb.cooldownMeter) {
+                    orb.cooldownMeter.setAlpha(0);
+                    orb.cooldownMeter.clear();
+                }
+                
                 // Stop any active tweens on orbs
                 this.tweens.killTweensOf(orb.container);
                 this.tweens.killTweensOf(orb.orb);
+                this.tweens.killTweensOf(orb.cooldownMeter);
             });
         }
         
@@ -1525,13 +2246,57 @@ class PacManScene extends Phaser.Scene {
         this.load.image('pacman-tiles', 'assets/pacman-background-992x672.png');
         this.load.spritesheet('pacman', 'assets/pacman-411x440-spritesheet.png', { frameWidth: 412, frameHeight: 440 });
         this.load.image('work-experience', 'assets/work-experience.png');
-        this.load.image('projects', 'assets/projects.png');
-        this.load.image('skills', 'assets/skills.png');
-        this.load.image('about-me', 'assets/about-me.png');
         this.load.image('forcepoint-logo', 'assets/forcepoint-neon-logo.png');
-        this.load.image('ucr-logo', 'assets/ucr-neon-logo.png');
         this.load.image('serc-logo', 'assets/serc-neon-logo.png');
+        this.load.image('ucr-logo', 'assets/ucr-neon-logo.png');
         this.load.image('smartbridge-logo', 'assets/smartbridge-neon-logo.png');
+        this.load.image('projects', 'assets/projects.png');
+        this.load.image('mentorAI-logo', 'assets/projects-mentorAI-logo.png');
+        this.load.image('sensAI-search-logo', 'assets/projects-sensAISearch-logo.png');
+        this.load.image('zk-charity-logo', 'assets/projects-zkCharity-logo.png');
+        this.load.image('chargeWise-logo', 'assets/projects-chargeWise-logo.png');
+        this.load.image('skills', 'assets/skills.png');
+        this.load.image('databases', 'assets/databases-neon-orb-logo.png');
+        this.load.image('mysql-icon', 'assets/mysql-icon.png');
+        this.load.image('postgresql-icon', 'assets/postgresql-icon.png');
+        this.load.image('mongodb-icon', 'assets/mongodb-icon.png');
+        this.load.image('redis-icon', 'assets/redis-icon.png');
+        this.load.image('postgresql-icon', 'assets/postgresql-icon.png');
+        this.load.image('languages', 'assets/languages-neon-orb-logo.png');
+        this.load.image('python-icon', 'assets/python-icon.png');
+        this.load.image('javascript-icon', 'assets/javascript-icon.png');
+        this.load.image('cpp-icon', 'assets/cpp-icon.png');
+        this.load.image('golang-icon', 'assets/golang-icon.png');
+        this.load.image('technologies', 'assets/technologies-neon-orb-logo.png');
+        this.load.image('django-icon', 'assets/django-icon.png');
+        this.load.image('fastapi-icon', 'assets/fastapi-icon.png');
+        this.load.image('flask-icon', 'assets/flask-icon.png');
+        this.load.image('nextjs-icon', 'assets/nextjs-icon.png');
+        this.load.image('node-js-icon', 'assets/node-js-icon.png');
+        this.load.image('vue-js-icon', 'assets/vue-js-icon.png');
+        this.load.image('tailwind-css-icon', 'assets/tailwind-css-icon.png');
+        this.load.image('react-icon', 'assets/react-icon.png');
+        this.load.image('tools', 'assets/tools-neon-orb-logo.png');
+        this.load.image('kubernetes-icon', 'assets/kubernetes-icon.png');
+        this.load.image('wandb-icon', 'assets/wandb-icon.png');
+        this.load.image('jenkins-icon', 'assets/jenkins-icon.png');
+        this.load.image('databricks-icon', 'assets/databricks-icon.png');
+        this.load.image('docker-icon', 'assets/docker-icon.png');
+        this.load.image('mlflow-icon', 'assets/mlflow-icon.png');
+        this.load.image('langchain-icon', 'assets/langchain-icon.png');
+        this.load.image('anthropic-mcp-icon', 'assets/anthropic-mcp-icon.png');
+        this.load.image('kafka-icon', 'assets/kafka-icon.png');
+        this.load.image('about-me', 'assets/about-me.png');
+        this.load.image('github-logo', 'assets/github-neon-logo.png');
+        this.load.image('linkedin-logo', 'assets/linkedin-neon-logo.png');
+        this.load.image('education-logo', 'assets/education-neon-logo.png');
+        this.load.image('resume-logo', 'assets/resume-neon-logo.png');
+        this.load.image('w-key-logo', 'assets/keyboard-w-key-logo.png')
+        this.load.image('s-key-logo', 'assets/keyboard-s-key-logo.png')
+        this.load.image('a-key-logo', 'assets/keyboard-a-key-logo.png')
+        this.load.image('d-key-logo', 'assets/keyboard-d-key-logo.png')
+        this.load.image('esc-key-logo', 'assets/keyboard-esc-key-logo.png')
+        this.load.image('enter-key-logo', 'assets/keyboard-enter-key-logo.png')
     }
 
     create() {
@@ -1596,6 +2361,12 @@ class PacManScene extends Phaser.Scene {
             this.updateSectionIconsProximity();
             this.updateCamera();
             this.updateInstructions();
+
+            // Handle continuous overlay scrolling via keyboard while overlay is open
+            if (this.overlayOpen) {
+                this.updateOverlayScrollInput();
+                this.updateOpenLinkPromptInput();
+            }
         }
     }
 
@@ -1616,7 +2387,6 @@ class PacManScene extends Phaser.Scene {
         if (this.instructionArrows) {
             this.instructionArrows.forEach(instruction => {
                 this.tweens.killTweensOf(instruction.arrow);
-                this.tweens.killTweensOf(instruction.keyBg);
             });
         }
 
@@ -1675,7 +2445,14 @@ class PacManPlayer extends Phaser.GameObjects.Sprite {
         this.handleMovement();
     }
 
-    handleMovement() {        
+    handleMovement() {
+        // Disable movement if overlay is open
+        if (this.scene.overlayOpen) {
+            this.body.setVelocity(0, 0);
+            this.anims.stop(); // Stop the animation when overlay is open
+            return;
+        }
+        
         // Reset direction
         this.direction.x = 0;
         this.direction.y = 0;
