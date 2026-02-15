@@ -35,5 +35,5 @@ By leveraging **Phaser’s Arcade Physics** and **Tilemaps**, I’ve turned trad
 
 ## 🎬 Demo
 
-![Demo](Pacman-Portfolio-Demo.gif)
+![Demo](./Pacman-Portfolio-Demo.gif)
 
