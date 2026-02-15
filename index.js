@@ -2285,11 +2285,9 @@ class PacManScene extends Phaser.Scene {
         this.load.image('mlflow-icon', 'assets/mlflow-icon.png');
         this.load.image('langchain-icon', 'assets/langchain-icon.png');
         this.load.image('anthropic-mcp-icon', 'assets/anthropic-mcp-icon.png');
-        this.load.image('kafka-icon', 'assets/kafka-icon.png');
         this.load.image('about-me', 'assets/about-me.png');
         this.load.image('github-logo', 'assets/github-neon-logo.png');
         this.load.image('linkedin-logo', 'assets/linkedin-neon-logo.png');
-        this.load.image('education-logo', 'assets/education-neon-logo.png');
         this.load.image('resume-logo', 'assets/resume-neon-logo.png');
         this.load.image('w-key-logo', 'assets/keyboard-w-key-logo.png')
         this.load.image('s-key-logo', 'assets/keyboard-s-key-logo.png')
